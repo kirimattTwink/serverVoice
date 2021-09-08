@@ -6,14 +6,21 @@ import net.miginfocom.swing.MigLayout;
 import javax.sound.sampled.*;
 import javax.swing.*;
 import java.awt.*;
+import java.io.*;
+import java.lang.reflect.Array;
 import java.net.DatagramSocket;
 import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 /**
  * @author azamat
  */
 public class ServerFrame extends JFrame {
     public int port = 8888;
+    public static List<Byte> bytesList = new ArrayList<>();
 
     public static AudioFormat getAudioFormat() {
         float samplerate = 8000.0f;
@@ -24,6 +31,7 @@ public class ServerFrame extends JFrame {
         return new AudioFormat(samplerate, sampleSizeInbits, channel, signed, bigEndian);
     }
     public SourceDataLine audioOut;
+    Clip clip;
 
     public JButton startButton;
     public JButton endButton;
@@ -37,6 +45,8 @@ public class ServerFrame extends JFrame {
         startButton = new JButton("Start");
         startButton.addActionListener(e -> {
             initAudio();
+            if(clip != null)
+                clip.stop();
         });
         GuiHelper.setComponentSize(startButton, new Dimension(100, 30));
 
@@ -45,6 +55,21 @@ public class ServerFrame extends JFrame {
             ServerVoice.isCalled = false;
             startButton.setEnabled(true);
             endButton.setEnabled(false);
+
+            //TODO Разобраться с преобразованием списка в массив.
+            Byte[] array = new Byte[bytesList.size()];
+            array = bytesList.toArray(array);
+            byte[] arraybyte = new byte[array.length];
+            int r = 0;
+            for(Byte b : array)
+                arraybyte[r++] = b;
+            try {
+                writeAudioToWavFile( arraybyte, getAudioFormat(), "sound.wav");
+            } catch (Exception exception) {
+                exception.printStackTrace();
+            }
+
+
         });
         GuiHelper.setComponentSize(endButton, new Dimension(100, 30));
 
@@ -80,8 +105,13 @@ public class ServerFrame extends JFrame {
             startButton.setEnabled(false);
 
 
-        } catch (LineUnavailableException | SocketException e) {
+        } catch (LineUnavailableException | IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public static void writeAudioToWavFile(byte[] data, AudioFormat format, String fn) throws Exception {
+        AudioInputStream ais = new AudioInputStream(new ByteArrayInputStream(data), format, data.length);
+        AudioSystem.write(ais, AudioFileFormat.Type.WAVE, new File(fn));
     }
 }
