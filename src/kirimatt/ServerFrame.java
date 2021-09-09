@@ -6,29 +6,39 @@ import net.miginfocom.swing.MigLayout;
 import javax.sound.sampled.*;
 import javax.swing.*;
 import java.awt.*;
-import java.io.*;
-import java.lang.reflect.Array;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
 
 /**
  * @author azamat
  */
 public class ServerFrame extends JFrame {
     public int port = 8888;
+    public DatagramSocket datagramSocket;
+
+    {
+        try {
+            datagramSocket = new DatagramSocket(port);
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+    }
+
     public static List<Byte> bytesList = new ArrayList<>();
+    public PlayerThread playerThread;
 
     public static AudioFormat getAudioFormat() {
-        float samplerate = 8000.0f;
-        int sampleSizeInbits = 16;
+        float sampleRate = 16000.0f;
+        int sampleSizeInBits = 16;
         int channel = 2;
         boolean signed = true;
         boolean bigEndian = false;
-        return new AudioFormat(samplerate, sampleSizeInbits, channel, signed, bigEndian);
+        return new AudioFormat(sampleRate, sampleSizeInBits, channel, signed, bigEndian);
     }
     public SourceDataLine audioOut;
     Clip clip;
@@ -37,7 +47,7 @@ public class ServerFrame extends JFrame {
     public JButton endButton;
     public ServerFrame() throws HeadlessException {
         this.setLayout(new MigLayout());
-        this.setSize(new Dimension(220, 120));
+        this.setSize(new Dimension(220, 150));
 
         JLabel clientLbl = new JLabel(GuiHelper.setHtmlTag("SERVER"));
         GuiHelper.setComponentSize(clientLbl, new Dimension(200, 30));
@@ -56,26 +66,51 @@ public class ServerFrame extends JFrame {
             startButton.setEnabled(true);
             endButton.setEnabled(false);
 
-            //TODO Разобраться с преобразованием списка в массив.
-            Byte[] array = new Byte[bytesList.size()];
-            array = bytesList.toArray(array);
-            byte[] arraybyte = new byte[array.length];
+            byte[] arrayByte = new byte[bytesList.size()];
             int r = 0;
-            for(Byte b : array)
-                arraybyte[r++] = b;
+            for(Byte b : bytesList)
+                arrayByte[r++] = b;
             try {
-                writeAudioToWavFile( arraybyte, getAudioFormat(), "sound.wav");
+                writeAudioToWavFile(arrayByte, getAudioFormat(), "sound.wav");
+                bytesList.clear();
             } catch (Exception exception) {
                 exception.printStackTrace();
             }
 
-
         });
         GuiHelper.setComponentSize(endButton, new Dimension(100, 30));
+        endButton.setEnabled(false);
+
+        JButton clipStartButton = new JButton("Clip Start");
+        clipStartButton.addActionListener(e -> {
+
+            File file = new File("sound.wav");
+            AudioInputStream audioInputStream;
+            try {
+                audioInputStream = AudioSystem.getAudioInputStream(file);
+                clip = AudioSystem.getClip();
+                clip.open(audioInputStream);
+                clip.start();
+            } catch (UnsupportedAudioFileException | IOException | LineUnavailableException ex) {
+                ex.printStackTrace();
+            }
+
+        });
+        GuiHelper.setComponentSize(clipStartButton, new Dimension(100, 30));
+
+        JButton clipEndButton = new JButton("Clip End");
+        clipEndButton.addActionListener(e -> {
+           if(clip != null)
+                clip.stop();
+        });
+        GuiHelper.setComponentSize(clipEndButton, new Dimension(100, 30));
 
         add(clientLbl, "gapleft 80 ,right, wrap, span");
         add(startButton);
-        add(endButton);
+        add(endButton, "wrap");
+        add(clipStartButton);
+        add(clipEndButton);
+
     }
 
     public void initAudio() {
@@ -94,8 +129,10 @@ public class ServerFrame extends JFrame {
 
             audioOut.start();
 
-            PlayerThread playerThread = new PlayerThread();
-            playerThread.din = new DatagramSocket(port);
+
+            playerThread = new PlayerThread();
+
+            playerThread.din = datagramSocket;
             playerThread.audioOut = audioOut;
 
             ServerVoice.isCalled = true;
@@ -105,7 +142,7 @@ public class ServerFrame extends JFrame {
             startButton.setEnabled(false);
 
 
-        } catch (LineUnavailableException | IOException e) {
+        } catch (LineUnavailableException  e) {
             e.printStackTrace();
         }
     }

@@ -1,19 +1,17 @@
 package kirimatt;
 
-import javax.sound.sampled.*;
-import java.io.*;
+import javax.sound.sampled.SourceDataLine;
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.util.List;
-import java.util.Objects;
 
 /**
  * @author azamat
  */
 public class PlayerThread extends Thread {
-    public DatagramSocket din;
+    public volatile DatagramSocket din;
     public SourceDataLine audioOut;
-    public byte[] buffer = new byte[512];
+    public byte[] buffer = new byte[2048];
 
     @Override
     public void run() {
@@ -28,7 +26,8 @@ public class PlayerThread extends Thread {
                 //audioOut.write(buffer, 0,buffer.length);
                 System.out.println("#" + i++);
 
-                for (byte b : buffer) ServerFrame.bytesList.add(b);
+                for (byte b : buffer)
+                    ServerFrame.bytesList.add(b);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -36,6 +35,7 @@ public class PlayerThread extends Thread {
 
         audioOut.close();
         audioOut.drain();
+
         System.out.println("Stop");
     }
 }
