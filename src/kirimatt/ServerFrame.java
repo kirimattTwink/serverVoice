@@ -13,6 +13,7 @@ import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * @author azamat
@@ -20,14 +21,6 @@ import java.util.List;
 public class ServerFrame extends JFrame {
     public int port = 8888;
     public DatagramSocket datagramSocket;
-
-    {
-        try {
-            datagramSocket = new DatagramSocket(port);
-        } catch (SocketException e) {
-            e.printStackTrace();
-        }
-    }
 
     public static List<Byte> bytesList = new ArrayList<>();
     public PlayerThread playerThread;
@@ -41,11 +34,20 @@ public class ServerFrame extends JFrame {
         return new AudioFormat(sampleRate, sampleSizeInBits, channel, signed, bigEndian);
     }
     public SourceDataLine audioOut;
-    Clip clip;
+
+    @SuppressWarnings("all")
+    public Optional<Clip> clip = Optional.empty();
 
     public JButton startButton;
     public JButton endButton;
     public ServerFrame() throws HeadlessException {
+
+        try {
+            datagramSocket = new DatagramSocket(port);
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+
         this.setLayout(new MigLayout());
         this.setSize(new Dimension(220, 150));
 
@@ -55,8 +57,7 @@ public class ServerFrame extends JFrame {
         startButton = new JButton("Start");
         startButton.addActionListener(e -> {
             initAudio();
-            if(clip != null)
-                clip.stop();
+            clip.ifPresent(Clip::stop);
         });
         GuiHelper.setComponentSize(startButton, new Dimension(100, 30));
 
@@ -88,9 +89,11 @@ public class ServerFrame extends JFrame {
             AudioInputStream audioInputStream;
             try {
                 audioInputStream = AudioSystem.getAudioInputStream(file);
-                clip = AudioSystem.getClip();
-                clip.open(audioInputStream);
-                clip.start();
+
+                clip = Optional.of(AudioSystem.getClip());
+                clip.get().open(audioInputStream);
+                clip.get().start();
+
             } catch (UnsupportedAudioFileException | IOException | LineUnavailableException ex) {
                 ex.printStackTrace();
             }
@@ -99,10 +102,7 @@ public class ServerFrame extends JFrame {
         GuiHelper.setComponentSize(clipStartButton, new Dimension(100, 30));
 
         JButton clipEndButton = new JButton("Clip End");
-        clipEndButton.addActionListener(e -> {
-           if(clip != null)
-                clip.stop();
-        });
+        clipEndButton.addActionListener(e -> clip.ifPresent(Clip::stop));
         GuiHelper.setComponentSize(clipEndButton, new Dimension(100, 30));
 
         add(clientLbl, "gapleft 80 ,right, wrap, span");
