@@ -28,6 +28,7 @@ public class ServerFrame extends JFrame {
     public Optional<Clip> clip = Optional.empty();
     public JButton startButton;
     public JButton endButton;
+
     public ServerFrame() throws HeadlessException {
 
         this.setLayout(new MigLayout());
@@ -57,6 +58,7 @@ public class ServerFrame extends JFrame {
 
         endButton = new JButton("End");
         endButton.addActionListener(e -> {
+
             ServerVoice.isCalled = false;
             startButton.setEnabled(true);
             endButton.setEnabled(false);
@@ -69,7 +71,7 @@ public class ServerFrame extends JFrame {
                 writeAudioToWavFile(arrayByte, getAudioFormat(), "sound.wav");
                 bytesList.clear();
             } catch (Exception exception) {
-                exception.printStackTrace();
+                System.err.println("Произошла ошибка при записи файла");
             }
 
         });
@@ -89,7 +91,7 @@ public class ServerFrame extends JFrame {
                 clip.get().start();
 
             } catch (UnsupportedAudioFileException | IOException | LineUnavailableException ex) {
-                ex.printStackTrace();
+                System.err.println("Возникла ошибка при воспроизведении файла");
             }
 
         });
@@ -151,7 +153,7 @@ public class ServerFrame extends JFrame {
             startButton.setEnabled(false);
 
         } catch (LineUnavailableException e) {
-            e.printStackTrace();
+            System.err.println("Линия не доступна");
         }
     }
 }
