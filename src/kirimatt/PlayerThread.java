@@ -29,7 +29,7 @@ public class PlayerThread extends Thread {
                 for (byte b : buffer)
                     ServerFrame.bytesList.add(b);
             } catch (IOException e) {
-                e.printStackTrace();
+                System.err.println("Ошибка во время выполнения потока " + e);
             }
         }
 
