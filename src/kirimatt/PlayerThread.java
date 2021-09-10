@@ -6,11 +6,24 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 
 /**
+ * Поток проигрывателя.
+ * Принимает пакеты и обрабатывает их.
+ * Закомментирована возможность проигрывания в реальном времени.
+ * Записывает байты в список, для дальнейшего преобразования в файл
  * @author azamat
  */
 public class PlayerThread extends Thread {
+    /**
+     * Сокет для принятия пакетов
+     */
     public volatile DatagramSocket din;
+    /**
+     * Микшер
+     */
     public SourceDataLine audioOut;
+    /**
+     * Массив байтов для принятия пакетов
+     */
     public byte[] buffer = new byte[2048];
 
     @Override

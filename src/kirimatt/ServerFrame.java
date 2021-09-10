@@ -16,17 +16,45 @@ import java.util.List;
 import java.util.Optional;
 
 /**
+ * Главный фрейм приложения
+ * отвечает за все представления серверной части
  * @author azamat
  */
 public class ServerFrame extends JFrame {
+
+    /**
+     * Лист байтов для записи в WAV файл
+     */
     public static List<Byte> bytesList = new ArrayList<>();
+    /**
+     * Порт для принятия пакетов
+     */
     public int port = 8888;
+    /**
+     * Сокет
+     */
     public DatagramSocket datagramSocket;
+    /**
+     * Поток с принятием пакетов
+     */
     public PlayerThread playerThread;
+    /**
+     * Микшер для вывода
+     */
     public SourceDataLine audioOut;
+    /**
+     * Клип для воспроизведения файла
+     */
     @SuppressWarnings("all")
     public Optional<Clip> clip = Optional.empty();
+
+    /**
+     * Кнопка начала воспроизведения записанного файла
+     */
     public JButton startButton;
+    /**
+     * Кнопка для остановки воспроизведения
+     */
     public JButton endButton;
 
     public ServerFrame() throws HeadlessException {
@@ -111,6 +139,10 @@ public class ServerFrame extends JFrame {
 
     }
 
+    /**
+     * Метод для инициализации константного аудио формата
+     * @return Возвращает аудио формат
+     */
     public static AudioFormat getAudioFormat() {
         float sampleRate = 16000.0f;
         int sampleSizeInBits = 16;
@@ -120,11 +152,22 @@ public class ServerFrame extends JFrame {
         return new AudioFormat(sampleRate, sampleSizeInBits, channel, signed, bigEndian);
     }
 
+    /**
+     * Метод для записи в WAV файл
+     * @param data Байты
+     * @param format Формат аудио
+     * @param fn Строка пути к новому файлу
+     * @throws Exception Ошибка при записи файла
+     */
     public static void writeAudioToWavFile(byte[] data, AudioFormat format, String fn) throws Exception {
         AudioInputStream ais = new AudioInputStream(new ByteArrayInputStream(data), format, data.length);
         AudioSystem.write(ais, AudioFileFormat.Type.WAVE, new File(fn));
     }
 
+    /**
+     * Инициализация аудио.
+     * Запускает поток проигрывателя
+     */
     public void initAudio() {
         try {
             AudioFormat format = getAudioFormat();
