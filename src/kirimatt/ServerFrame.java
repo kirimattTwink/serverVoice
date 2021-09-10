@@ -40,22 +40,30 @@ public class ServerFrame extends JFrame {
 
     public JButton startButton;
     public JButton endButton;
+
     public ServerFrame() throws HeadlessException {
 
-        try {
-            datagramSocket = new DatagramSocket(port);
-        } catch (SocketException e) {
-            e.printStackTrace();
-        }
-
         this.setLayout(new MigLayout());
-        this.setSize(new Dimension(220, 150));
+        this.setSize(new Dimension(230, 180));
 
         JLabel clientLbl = new JLabel(GuiHelper.setHtmlTag("SERVER"));
         GuiHelper.setComponentSize(clientLbl, new Dimension(200, 30));
 
+        JLabel lblPort = new JLabel(GuiHelper.setHtmlTag("Port to connect: "));
+        JTextField portText = new JTextField("8888");
+        GuiHelper.setComponentSize(portText, new Dimension(100, 30));
+
         startButton = new JButton("Start");
         startButton.addActionListener(e -> {
+            if(datagramSocket == null || Integer.parseInt(portText.getText()) != datagramSocket.getLocalPort()){
+                try {
+                    datagramSocket = new DatagramSocket(portText.getText().isEmpty() ? port : Integer.parseInt(portText.getText()));
+                } catch (SocketException ex) {
+                    System.err.println("Не удалось открыть сокет");
+                }
+            }
+
+
             initAudio();
             clip.ifPresent(Clip::stop);
         });
@@ -106,6 +114,8 @@ public class ServerFrame extends JFrame {
         GuiHelper.setComponentSize(clipEndButton, new Dimension(100, 30));
 
         add(clientLbl, "gapleft 80 ,right, wrap, span");
+        add(lblPort);
+        add(portText, "wrap");
         add(startButton);
         add(endButton, "wrap");
         add(clipStartButton);
@@ -129,7 +139,6 @@ public class ServerFrame extends JFrame {
 
             audioOut.start();
 
-
             playerThread = new PlayerThread();
 
             playerThread.din = datagramSocket;
@@ -140,7 +149,6 @@ public class ServerFrame extends JFrame {
 
             endButton.setEnabled(true);
             startButton.setEnabled(false);
-
 
         } catch (LineUnavailableException  e) {
             e.printStackTrace();
