@@ -19,28 +19,15 @@ import java.util.Optional;
  * @author azamat
  */
 public class ServerFrame extends JFrame {
+    public static List<Byte> bytesList = new ArrayList<>();
     public int port = 8888;
     public DatagramSocket datagramSocket;
-
-    public static List<Byte> bytesList = new ArrayList<>();
     public PlayerThread playerThread;
-
-    public static AudioFormat getAudioFormat() {
-        float sampleRate = 16000.0f;
-        int sampleSizeInBits = 16;
-        int channel = 2;
-        boolean signed = true;
-        boolean bigEndian = false;
-        return new AudioFormat(sampleRate, sampleSizeInBits, channel, signed, bigEndian);
-    }
     public SourceDataLine audioOut;
-
     @SuppressWarnings("all")
     public Optional<Clip> clip = Optional.empty();
-
     public JButton startButton;
     public JButton endButton;
-
     public ServerFrame() throws HeadlessException {
 
         this.setLayout(new MigLayout());
@@ -55,17 +42,16 @@ public class ServerFrame extends JFrame {
 
         startButton = new JButton("Start");
         startButton.addActionListener(e -> {
-            if(datagramSocket == null || Integer.parseInt(portText.getText()) != datagramSocket.getLocalPort()){
+            if (datagramSocket == null || Integer.parseInt(portText.getText()) != datagramSocket.getLocalPort()) {
                 try {
                     datagramSocket = new DatagramSocket(portText.getText().isEmpty() ? port : Integer.parseInt(portText.getText()));
                 } catch (SocketException ex) {
                     System.err.println("Не удалось открыть сокет");
                 }
             }
-
+            clip.ifPresent(Clip::stop);
 
             initAudio();
-            clip.ifPresent(Clip::stop);
         });
         GuiHelper.setComponentSize(startButton, new Dimension(100, 30));
 
@@ -77,7 +63,7 @@ public class ServerFrame extends JFrame {
 
             byte[] arrayByte = new byte[bytesList.size()];
             int r = 0;
-            for(Byte b : bytesList)
+            for (Byte b : bytesList)
                 arrayByte[r++] = b;
             try {
                 writeAudioToWavFile(arrayByte, getAudioFormat(), "sound.wav");
@@ -123,17 +109,31 @@ public class ServerFrame extends JFrame {
 
     }
 
+    public static AudioFormat getAudioFormat() {
+        float sampleRate = 16000.0f;
+        int sampleSizeInBits = 16;
+        int channel = 2;
+        boolean signed = true;
+        boolean bigEndian = false;
+        return new AudioFormat(sampleRate, sampleSizeInBits, channel, signed, bigEndian);
+    }
+
+    public static void writeAudioToWavFile(byte[] data, AudioFormat format, String fn) throws Exception {
+        AudioInputStream ais = new AudioInputStream(new ByteArrayInputStream(data), format, data.length);
+        AudioSystem.write(ais, AudioFileFormat.Type.WAVE, new File(fn));
+    }
+
     public void initAudio() {
         try {
             AudioFormat format = getAudioFormat();
 
             DataLine.Info infoOut = new DataLine.Info(SourceDataLine.class, format);
-            if(!AudioSystem.isLineSupported(infoOut)) {
+            if (!AudioSystem.isLineSupported(infoOut)) {
                 System.out.println("Not support");
                 System.exit(0);
             }
 
-            audioOut = (SourceDataLine) AudioSystem. getLine(infoOut);
+            audioOut = (SourceDataLine) AudioSystem.getLine(infoOut);
 
             audioOut.open(format);
 
@@ -150,13 +150,8 @@ public class ServerFrame extends JFrame {
             endButton.setEnabled(true);
             startButton.setEnabled(false);
 
-        } catch (LineUnavailableException  e) {
+        } catch (LineUnavailableException e) {
             e.printStackTrace();
         }
-    }
-
-    public static void writeAudioToWavFile(byte[] data, AudioFormat format, String fn) throws Exception {
-        AudioInputStream ais = new AudioInputStream(new ByteArrayInputStream(data), format, data.length);
-        AudioSystem.write(ais, AudioFileFormat.Type.WAVE, new File(fn));
     }
 }
