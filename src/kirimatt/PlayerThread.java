@@ -36,7 +36,7 @@ public class PlayerThread extends Thread {
                 buffer = incoming.getData();
 
                 //TODO: Расскоментировать для включения реал-тайм звука.
-                //audioOut.write(buffer, 0,buffer.length);
+                audioOut.write(buffer, 0,buffer.length);
                 System.out.println("#" + i++);
 
                 for (byte b : buffer)
