@@ -20,6 +20,7 @@ import java.util.Optional;
 /**
  * Главный фрейм приложения
  * отвечает за все представления серверной части
+ *
  * @author azamat
  */
 public class ServerFrame extends JFrame {
@@ -29,6 +30,14 @@ public class ServerFrame extends JFrame {
      */
     public static List<Byte> bytesList = new ArrayList<>();
     /**
+     * Поле для ввода IP адреса
+     */
+    private final JTextField addressIPText;
+    /**
+     * Поле для ввода порта
+     */
+    private final JTextField portText;
+    /**
      * Порт для принятия пакетов
      */
     public int port = 8888;
@@ -36,7 +45,6 @@ public class ServerFrame extends JFrame {
      * IP адрес по умолчанию
      */
     public String serverIP = "127.0.0.1";
-
     /**
      * Сокет
      */
@@ -54,7 +62,6 @@ public class ServerFrame extends JFrame {
      */
     @SuppressWarnings("all")
     public Optional<Clip> clip = Optional.empty();
-
     /**
      * Кнопка начала воспроизведения записанного файла
      */
@@ -63,15 +70,6 @@ public class ServerFrame extends JFrame {
      * Кнопка для остановки воспроизведения
      */
     public JButton endButton;
-
-    /**
-     * Поле для ввода IP адреса
-     */
-    private final JTextField addressIPText;
-    /**
-     * Поле для ввода порта
-     */
-    private final JTextField portText;
 
     public ServerFrame() throws HeadlessException {
 
@@ -164,6 +162,7 @@ public class ServerFrame extends JFrame {
 
     /**
      * Метод для инициализации константного аудио формата
+     *
      * @return Возвращает аудио формат
      */
     public static AudioFormat getAudioFormat() {
@@ -177,9 +176,10 @@ public class ServerFrame extends JFrame {
 
     /**
      * Метод для записи в WAV файл
-     * @param data Байты
+     *
+     * @param data   Байты
      * @param format Формат аудио
-     * @param fn Строка пути к новому файлу
+     * @param fn     Строка пути к новому файлу
      * @throws Exception Ошибка при записи файла
      */
     public static void writeAudioToWavFile(byte[] data, AudioFormat format, String fn) throws Exception {

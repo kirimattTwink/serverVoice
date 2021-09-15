@@ -8,6 +8,7 @@ import java.net.InetAddress;
 
 /**
  * Класс потока для передачи записанного аудио
+ *
  * @author azamat
  */
 public class RecorderThread extends Thread {

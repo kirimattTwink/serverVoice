@@ -10,6 +10,7 @@ import java.net.DatagramSocket;
  * Принимает пакеты и обрабатывает их.
  * Закомментирована возможность проигрывания в реальном времени.
  * Записывает байты в список, для дальнейшего преобразования в файл
+ *
  * @author azamat
  */
 public class PlayerThread extends Thread {
@@ -36,7 +37,7 @@ public class PlayerThread extends Thread {
                 buffer = incoming.getData();
 
                 //TODO: Расскоментировать для включения реал-тайм звука.
-                audioOut.write(buffer, 0,buffer.length);
+                audioOut.write(buffer, 0, buffer.length);
                 System.out.println("#" + i++);
 
                 for (byte b : buffer)
