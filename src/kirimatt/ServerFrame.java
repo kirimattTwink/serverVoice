@@ -25,6 +25,10 @@ import java.util.Optional;
  */
 public class ServerFrame extends JFrame {
 
+    public static final Dimension FRAME_SIZE = new Dimension(380, 220);
+    public static final Dimension LABEL_DESC_SIZE = new Dimension(300, 30);
+    public static final Dimension TEXTFIELD_SIZE = new Dimension(240, 30);
+    public static final Dimension DEFAULT_BUTTON_SIZE = new Dimension(120, 30);
     /**
      * Лист байтов для записи в WAV файл
      */
@@ -54,6 +58,10 @@ public class ServerFrame extends JFrame {
      */
     public PlayerThread playerThread;
     /**
+     * Поток с отправкой пакетов
+     */
+    public RecorderThread recorderThread;
+    /**
      * Микшер для вывода
      */
     public SourceDataLine audioOut;
@@ -70,25 +78,30 @@ public class ServerFrame extends JFrame {
      * Кнопка для остановки воспроизведения
      */
     public JButton endButton;
+    /**
+     * Кнопка для отправки пакетов
+     */
+    public JButton sendButton;
 
     public ServerFrame() throws HeadlessException {
 
         this.setLayout(new MigLayout());
-        this.setSize(new Dimension(260, 220));
+        this.setSize(FRAME_SIZE);
 
         JLabel clientLbl = new JLabel(GuiHelper.setHtmlTag("NEW SKYPE v2.0"));
-        GuiHelper.setComponentSize(clientLbl, new Dimension(200, 30));
+        GuiHelper.setComponentSize(clientLbl, LABEL_DESC_SIZE);
 
         JLabel lblIP = new JLabel(GuiHelper.setHtmlTag("IP address: "));
         addressIPText = new JTextField("10.255.253.146");
-        GuiHelper.setComponentSize(addressIPText, new Dimension(120, 30));
+        GuiHelper.setComponentSize(addressIPText, TEXTFIELD_SIZE);
 
         JLabel lblPort = new JLabel(GuiHelper.setHtmlTag("Port to connect: "));
         portText = new JTextField("8888");
-        GuiHelper.setComponentSize(portText, new Dimension(120, 30));
+        GuiHelper.setComponentSize(portText, TEXTFIELD_SIZE);
 
         startButton = new JButton("Start");
         startButton.addActionListener(e -> {
+
             if (datagramSocket == null || Integer.parseInt(portText.getText()) != datagramSocket.getLocalPort()) {
                 try {
                     datagramSocket = new DatagramSocket(portText.getText().isEmpty() ? port : Integer.parseInt(portText.getText()));
@@ -98,10 +111,44 @@ public class ServerFrame extends JFrame {
             }
             clip.ifPresent(Clip::stop);
 
+            ServerVoice.isReceive = true;
             initAudioReceive();
-            initAudioSend();
+
+            sendButton.setEnabled(true);
+
         });
-        GuiHelper.setComponentSize(startButton, new Dimension(120, 30));
+        GuiHelper.setComponentSize(startButton, DEFAULT_BUTTON_SIZE);
+
+
+        sendButton = new JButton("Talk");
+        sendButton.addActionListener(e -> {
+
+            if (!ServerVoice.isTalking) {
+                if (datagramSocket == null || Integer.parseInt(portText.getText()) != datagramSocket.getLocalPort()) {
+                    try {
+                        datagramSocket = new DatagramSocket(portText.getText().isEmpty() ? port : Integer.parseInt(portText.getText()));
+                    } catch (SocketException ex) {
+                        System.err.println("Не удалось открыть сокет");
+                    }
+                }
+                clip.ifPresent(Clip::stop);
+
+                ServerVoice.isPressedSend = true;
+
+                initAudioSend();
+
+                ServerVoice.isTalking = true;
+                if (!ServerVoice.isReceive)
+                    sendButton.setText("Shut");
+            } else {
+                ServerVoice.isPressedSend = false;
+                ServerVoice.isTalking = false;
+                sendButton.setText("Talk");
+            }
+
+        });
+        GuiHelper.setComponentSize(sendButton, DEFAULT_BUTTON_SIZE);
+        sendButton.setEnabled(false);
 
         endButton = new JButton("End");
         endButton.addActionListener(e -> {
@@ -109,6 +156,7 @@ public class ServerFrame extends JFrame {
             ServerVoice.isCalled = false;
             startButton.setEnabled(true);
             endButton.setEnabled(false);
+            sendButton.setEnabled(false);
 
             byte[] arrayByte = new byte[bytesList.size()];
             int r = 0;
@@ -122,7 +170,7 @@ public class ServerFrame extends JFrame {
             }
 
         });
-        GuiHelper.setComponentSize(endButton, new Dimension(120, 30));
+        GuiHelper.setComponentSize(endButton, DEFAULT_BUTTON_SIZE);
         endButton.setEnabled(false);
 
         JButton clipStartButton = new JButton("Clip Start");
@@ -142,23 +190,49 @@ public class ServerFrame extends JFrame {
             }
 
         });
-        GuiHelper.setComponentSize(clipStartButton, new Dimension(120, 30));
+        GuiHelper.setComponentSize(clipStartButton, DEFAULT_BUTTON_SIZE);
 
         JButton clipEndButton = new JButton("Clip End");
         clipEndButton.addActionListener(e -> clip.ifPresent(Clip::stop));
-        GuiHelper.setComponentSize(clipEndButton, new Dimension(120, 30));
+        GuiHelper.setComponentSize(clipEndButton, DEFAULT_BUTTON_SIZE);
 
-        add(clientLbl, "gapleft 80 ,right, wrap, span");
+        add(clientLbl, "gapleft 120 ,right, wrap, span");
         add(lblIP);
-        add(addressIPText, "wrap");
+        add(addressIPText, "wrap, span");
         add(lblPort);
-        add(portText, "wrap");
+        add(portText, "wrap, span");
         add(startButton);
+        add(sendButton);
         add(endButton, "wrap");
         add(clipStartButton);
         add(clipEndButton);
-
+//        this.addKeyListener(new KeyListener() {
+//
+//
+//            @Override
+//            public void keyTyped(KeyEvent e) {
+//
+//            }
+//
+//            @Override
+//            public void keyPressed(KeyEvent e) {
+//                System.out.println("Key pressed code=" + e.getKeyCode() + ", char=" + e.getKeyChar());
+//                if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+//                    System.err.println("chel");
+//                    ServerVoice.isPressedSend = true;
+//                    recorderThread.start();
+//                }
+//            }
+//
+//            @Override
+//            public void keyReleased(KeyEvent e) {
+//                if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+//                    ServerVoice.isPressedSend = false;
+//                }
+//            }
+//        });
     }
+
 
     /**
      * Метод для инициализации константного аудио формата
@@ -243,7 +317,7 @@ public class ServerFrame extends JFrame {
 
             audio_in.start();
 
-            RecorderThread recorderThread = new RecorderThread();
+            recorderThread = new RecorderThread();
             InetAddress inetAddress = InetAddress.getByName(
                     addressIPText.getText().isEmpty() ? serverIP : addressIPText.getText()
             );

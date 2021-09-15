@@ -35,20 +35,23 @@ public class RecorderThread extends Thread {
 
     @Override
     public void run() {
-        int i = 0;
-        while (ServerVoice.isCalled) {
-            try {
-                audio_in.read(byteBuffer, 0, byteBuffer.length);
-                DatagramPacket data = new DatagramPacket(byteBuffer, byteBuffer.length, serverIP, serverPort);
-                System.out.println("Send #" + i++);
+        if (!ServerVoice.isReceive) {
+            int i = 0;
+            while (ServerVoice.isCalled && ServerVoice.isPressedSend) {
+                try {
+                    audio_in.read(byteBuffer, 0, byteBuffer.length);
+                    DatagramPacket data = new DatagramPacket(byteBuffer, byteBuffer.length, serverIP, serverPort);
+                    System.out.println("Send #" + i++);
 
-                datagramSocket.send(data);
-            } catch (IOException e) {
-                System.err.println("Ошибка во время выполнения потока");
+                    datagramSocket.send(data);
+                } catch (IOException e) {
+                    System.err.println("Ошибка во время выполнения потока");
+                }
             }
-        }
-        audio_in.close();
-        audio_in.drain();
-        System.out.println("Thread stop");
+            audio_in.close();
+            audio_in.drain();
+            System.out.println("Thread stop");
+        } else
+            System.out.println("Receive now!");
     }
 }

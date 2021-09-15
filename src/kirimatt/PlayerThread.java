@@ -4,6 +4,8 @@ import javax.sound.sampled.SourceDataLine;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 
 /**
  * Поток проигрывателя.
@@ -31,17 +33,28 @@ public class PlayerThread extends Thread {
     public void run() {
         int i = 0;
         DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
+        ServerVoice.isReceive = false;
+        try {
+            din.setSoTimeout(1000);
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
         while (ServerVoice.isCalled) {
+
             try {
                 din.receive(incoming);
+
                 buffer = incoming.getData();
 
-                //TODO: Расскоментировать для включения реал-тайм звука.
+                ServerVoice.isReceive = true;
+
                 audioOut.write(buffer, 0, buffer.length);
                 System.out.println("#" + i++);
 
                 for (byte b : buffer)
                     ServerFrame.bytesList.add(b);
+            } catch (SocketTimeoutException e) {
+                ServerVoice.isReceive = false;
             } catch (IOException e) {
                 System.err.println("Ошибка во время выполнения потока " + e);
             }
@@ -49,6 +62,8 @@ public class PlayerThread extends Thread {
 
         audioOut.close();
         audioOut.drain();
+
+        ServerVoice.isReceive = false;
 
         System.out.println("Stop");
     }
