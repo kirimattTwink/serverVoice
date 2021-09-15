@@ -10,7 +10,9 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +32,11 @@ public class ServerFrame extends JFrame {
      * Порт для принятия пакетов
      */
     public int port = 8888;
+    /**
+     * IP адрес по умолчанию
+     */
+    public String serverIP = "127.0.0.1";
+
     /**
      * Сокет
      */
@@ -57,17 +64,30 @@ public class ServerFrame extends JFrame {
      */
     public JButton endButton;
 
+    /**
+     * Поле для ввода IP адреса
+     */
+    private final JTextField addressIPText;
+    /**
+     * Поле для ввода порта
+     */
+    private final JTextField portText;
+
     public ServerFrame() throws HeadlessException {
 
         this.setLayout(new MigLayout());
-        this.setSize(new Dimension(230, 180));
+        this.setSize(new Dimension(260, 220));
 
-        JLabel clientLbl = new JLabel(GuiHelper.setHtmlTag("SERVER"));
+        JLabel clientLbl = new JLabel(GuiHelper.setHtmlTag("NEW SKYPE v2.0"));
         GuiHelper.setComponentSize(clientLbl, new Dimension(200, 30));
 
+        JLabel lblIP = new JLabel(GuiHelper.setHtmlTag("IP address: "));
+        addressIPText = new JTextField("10.255.253.146");
+        GuiHelper.setComponentSize(addressIPText, new Dimension(120, 30));
+
         JLabel lblPort = new JLabel(GuiHelper.setHtmlTag("Port to connect: "));
-        JTextField portText = new JTextField("8888");
-        GuiHelper.setComponentSize(portText, new Dimension(100, 30));
+        portText = new JTextField("8888");
+        GuiHelper.setComponentSize(portText, new Dimension(120, 30));
 
         startButton = new JButton("Start");
         startButton.addActionListener(e -> {
@@ -80,9 +100,10 @@ public class ServerFrame extends JFrame {
             }
             clip.ifPresent(Clip::stop);
 
-            initAudio();
+            initAudioReceive();
+            initAudioSend();
         });
-        GuiHelper.setComponentSize(startButton, new Dimension(100, 30));
+        GuiHelper.setComponentSize(startButton, new Dimension(120, 30));
 
         endButton = new JButton("End");
         endButton.addActionListener(e -> {
@@ -103,7 +124,7 @@ public class ServerFrame extends JFrame {
             }
 
         });
-        GuiHelper.setComponentSize(endButton, new Dimension(100, 30));
+        GuiHelper.setComponentSize(endButton, new Dimension(120, 30));
         endButton.setEnabled(false);
 
         JButton clipStartButton = new JButton("Clip Start");
@@ -123,13 +144,15 @@ public class ServerFrame extends JFrame {
             }
 
         });
-        GuiHelper.setComponentSize(clipStartButton, new Dimension(100, 30));
+        GuiHelper.setComponentSize(clipStartButton, new Dimension(120, 30));
 
         JButton clipEndButton = new JButton("Clip End");
         clipEndButton.addActionListener(e -> clip.ifPresent(Clip::stop));
-        GuiHelper.setComponentSize(clipEndButton, new Dimension(100, 30));
+        GuiHelper.setComponentSize(clipEndButton, new Dimension(120, 30));
 
         add(clientLbl, "gapleft 80 ,right, wrap, span");
+        add(lblIP);
+        add(addressIPText, "wrap");
         add(lblPort);
         add(portText, "wrap");
         add(startButton);
@@ -168,7 +191,7 @@ public class ServerFrame extends JFrame {
      * Инициализация аудио.
      * Запускает поток проигрывателя
      */
-    public void initAudio() {
+    public void initAudioReceive() {
         try {
             AudioFormat format = getAudioFormat();
 
@@ -197,6 +220,44 @@ public class ServerFrame extends JFrame {
 
         } catch (LineUnavailableException e) {
             System.err.println("Линия не доступна");
+        }
+    }
+
+    /**
+     * Метод по инициализации аудио.
+     * Запускает поток передачи пакетов с аудио.
+     */
+    public void initAudioSend() {
+        try {
+            AudioFormat format = getAudioFormat();
+
+            DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+            if (!AudioSystem.isLineSupported(info)) {
+                System.out.println("Not support");
+                System.exit(0);
+            }
+
+            TargetDataLine audio_in = (TargetDataLine) AudioSystem.getLine(info);
+
+            audio_in.open(format);
+
+            audio_in.start();
+
+            RecorderThread recorderThread = new RecorderThread();
+            InetAddress inetAddress = InetAddress.getByName(
+                    addressIPText.getText().isEmpty() ? serverIP : addressIPText.getText()
+            );
+            recorderThread.audio_in = audio_in;
+            recorderThread.datagramSocket = new DatagramSocket();
+            recorderThread.serverIP = inetAddress;
+            recorderThread.serverPort = portText.getText().isEmpty() ? port : Integer.parseInt(portText.getText());
+            ServerVoice.isCalled = true;
+            recorderThread.start();
+            startButton.setEnabled(false);
+            endButton.setEnabled(true);
+
+        } catch (LineUnavailableException | SocketException | UnknownHostException e) {
+            System.err.println("Ошибка инициализации аудио" + e);
         }
     }
 }
