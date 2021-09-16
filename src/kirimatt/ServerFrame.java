@@ -27,7 +27,7 @@ public class ServerFrame extends JFrame {
 
     public static final Dimension FRAME_SIZE = new Dimension(380, 220);
     public static final Dimension LABEL_DESC_SIZE = new Dimension(300, 30);
-    public static final Dimension TEXTFIELD_SIZE = new Dimension(240, 30);
+    public static final Dimension TEXT_FIELD_SIZE = new Dimension(240, 30);
     public static final Dimension DEFAULT_BUTTON_SIZE = new Dimension(120, 30);
     /**
      * Лист байтов для записи в WAV файл
@@ -93,11 +93,11 @@ public class ServerFrame extends JFrame {
 
         JLabel lblIP = new JLabel(GuiHelper.setHtmlTag("IP address: "));
         addressIPText = new JTextField("10.255.253.146");
-        GuiHelper.setComponentSize(addressIPText, TEXTFIELD_SIZE);
+        GuiHelper.setComponentSize(addressIPText, TEXT_FIELD_SIZE);
 
         JLabel lblPort = new JLabel(GuiHelper.setHtmlTag("Port to connect: "));
         portText = new JTextField("8888");
-        GuiHelper.setComponentSize(portText, TEXTFIELD_SIZE);
+        GuiHelper.setComponentSize(portText, TEXT_FIELD_SIZE);
 
         startButton = new JButton("Start");
         startButton.addActionListener(e -> {
@@ -206,6 +206,9 @@ public class ServerFrame extends JFrame {
         add(endButton, "wrap");
         add(clipStartButton);
         add(clipEndButton);
+        //TODO: Исправить выход на более изящный.
+        setDefaultCloseOperation(onCloseFrame());
+
 //        this.addKeyListener(new KeyListener() {
 //
 //
@@ -218,7 +221,7 @@ public class ServerFrame extends JFrame {
 //            public void keyPressed(KeyEvent e) {
 //                System.out.println("Key pressed code=" + e.getKeyCode() + ", char=" + e.getKeyChar());
 //                if (e.getKeyCode() == KeyEvent.VK_SPACE) {
-//                    System.err.println("chel");
+//                    System.err.println("1");
 //                    ServerVoice.isPressedSend = true;
 //                    recorderThread.start();
 //                }
@@ -333,5 +336,10 @@ public class ServerFrame extends JFrame {
         } catch (LineUnavailableException | SocketException | UnknownHostException e) {
             System.err.println("Ошибка инициализации аудио" + e);
         }
+    }
+
+    public int onCloseFrame() {
+        ServerVoice.isCalled = false;
+        return JFrame.EXIT_ON_CLOSE;
     }
 }
