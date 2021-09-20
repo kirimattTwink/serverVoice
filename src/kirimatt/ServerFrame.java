@@ -243,7 +243,7 @@ public class ServerFrame extends JFrame {
      * @return Возвращает аудио формат
      */
     public static AudioFormat getAudioFormat() {
-        float sampleRate = 16000.0f;
+        float sampleRate = 44100.0f;
         int sampleSizeInBits = 16;
         int channel = 2;
         boolean signed = true;
@@ -318,6 +318,13 @@ public class ServerFrame extends JFrame {
 
             audio_in.open(format);
 
+            AudioInputStream in = new AudioInputStream(audio_in);
+
+            AudioFormat ulawFmt = new AudioFormat(AudioFormat.Encoding.ULAW,
+                    8000.0F, 8, 1, 1, 8000.0F, false);
+
+            AudioInputStream ulaw = AudioSystem.getAudioInputStream(AudioFormat.Encoding.ULAW, in);
+
             audio_in.start();
 
             recorderThread = new RecorderThread();
@@ -325,6 +332,7 @@ public class ServerFrame extends JFrame {
                     addressIPText.getText().isEmpty() ? serverIP : addressIPText.getText()
             );
             recorderThread.audio_in = audio_in;
+            recorderThread.ulaw = ulaw;
             recorderThread.datagramSocket = new DatagramSocket();
             recorderThread.serverIP = inetAddress;
             recorderThread.serverPort = portText.getText().isEmpty() ? port : Integer.parseInt(portText.getText());

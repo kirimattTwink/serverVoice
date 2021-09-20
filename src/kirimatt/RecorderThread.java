@@ -1,5 +1,6 @@
 package kirimatt;
 
+import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.TargetDataLine;
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -17,6 +18,10 @@ public class RecorderThread extends Thread {
      */
     public TargetDataLine audio_in = null;
     /**
+     * Кодировка
+     */
+    public AudioInputStream ulaw = null;
+    /**
      * Сокет для передачи пакетов
      */
     public DatagramSocket datagramSocket;
@@ -31,7 +36,7 @@ public class RecorderThread extends Thread {
     /**
      * Массив байтов буфера для передачи пакетов
      */
-    byte[] byteBuffer = new byte[2048];
+    byte[] byteBuffer = new byte[1400];
 
     @Override
     public void run() {
@@ -39,7 +44,8 @@ public class RecorderThread extends Thread {
             int i = 0;
             while (ServerVoice.isCalled && ServerVoice.isPressedSend) {
                 try {
-                    audio_in.read(byteBuffer, 0, byteBuffer.length);
+                    int len = ulaw.read(byteBuffer, 0, byteBuffer.length);
+                    //Должен ли я использовать len для чего-то?
                     DatagramPacket data = new DatagramPacket(byteBuffer, byteBuffer.length, serverIP, serverPort);
                     System.out.println("Send #" + i++);
 

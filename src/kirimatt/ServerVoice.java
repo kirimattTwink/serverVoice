@@ -2,7 +2,7 @@ package kirimatt;
 
 public class ServerVoice {
     /**
-     * Переменная для манипулирования выполнения потока
+     * Переменные для манипулирования выполнением потока
      */
     public static volatile boolean isCalled = false;
     public static volatile boolean isReceive = false;
