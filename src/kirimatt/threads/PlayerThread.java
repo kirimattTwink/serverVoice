@@ -1,4 +1,8 @@
-package kirimatt;
+package kirimatt.threads;
+
+import kirimatt.gui.ServerFrame;
+import kirimatt.ServerVoice;
+import kirimatt.utils.RtpPacket;
 
 import javax.sound.sampled.SourceDataLine;
 import java.io.IOException;
@@ -16,6 +20,11 @@ import java.net.SocketTimeoutException;
  * @author azamat
  */
 public class PlayerThread extends Thread {
+
+    /**
+     * Количество байт в пакете
+     */
+    public static final int LENGTH_BYTES = 240;
     /**
      * Сокет для принятия пакетов
      */
@@ -27,7 +36,7 @@ public class PlayerThread extends Thread {
     /**
      * Массив байтов для принятия пакетов
      */
-    public byte[] buffer = new byte[1400];
+    public byte[] buffer = new byte[LENGTH_BYTES];
 
     /**
      * Массив для декодирования
@@ -107,21 +116,38 @@ public class PlayerThread extends Thread {
                 din.receive(incoming);
 
                 buffer = incoming.getData();
-                byte[] outbuf = new byte[1400*2];
+
+                RtpPacket rtpPacket = new RtpPacket();
+                byte[] outbuf = rtpPacket.decodeG711(buffer);
+
+//                byte[] outbuf = new byte[LENGTH_BYTES*2];
 
                 ServerVoice.isReceive = true;
 
-                int len = buffer.length;
-                for (int j=0; j<len; j++) {
-                    outbuf[j*2] = (byte)(0x00FF & ulaw2L16[incoming.getData()[j] + 128]);
-                    outbuf[j*2+1] = (byte)((0xFF00 & ulaw2L16[incoming.getData()[j] + 128]) >> 8);
-                }
+//                int len = buffer.length;
+//
+//                for (int j=0; j<len; j++) {
+////                    int currentIndex = buffer[i] & 0xFF;
+////                    outbuf[j++] = muLawDecompressTable_low[currentIndex];
+////                    outbuf[j++] = muLawDecompressTable_high[currentIndex];
+//
+//                    outbuf[j*2] = (byte) (0x00FF & ulaw2L16[incoming.getData()[j] + 128]);
+//                    outbuf[j*2+1] = (byte)((0xFF00 & ulaw2L16[incoming.getData()[j] + 128]) >> 8);
+//
+//                    if(j < 24) {
+//                        outbuf[j] = 0;
+//                    }
+////                    outbuf[j*2] = (byte) ((byte) (ulaw2linear(buffer[j]) & 0x00FF)>>4);
+////                    outbuf[j*2+1] = (byte) ((ulaw2linear((buffer[j] ))& 0xFF00)>>8);
+//
+////                    buffer[j] = (byte) ((ulaw2linear((buffer[j] ))& 0xFF00)>>8);
+//                }
 //                srcLine.write(outbuf, 0, len*2);
 
                 audioOut.write(outbuf, 0, outbuf.length);
-                System.out.println("#" + i++);
+//                System.out.println("#" + i++);
 
-                for (byte b : buffer)
+                for (byte b : outbuf)
                     ServerFrame.bytesList.add(b);
             } catch (SocketTimeoutException e) {
                 ServerVoice.isReceive = false;

@@ -1,6 +1,9 @@
-package kirimatt;
+package kirimatt.gui;
 
 import components.GuiHelper;
+import kirimatt.ServerVoice;
+import kirimatt.threads.PlayerThread;
+import kirimatt.threads.RecorderThread;
 import net.miginfocom.swing.MigLayout;
 
 import javax.sound.sampled.*;
@@ -13,7 +16,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,14 +28,14 @@ import java.util.Optional;
  */
 public class ServerFrame extends JFrame {
 
-    public static final Dimension FRAME_SIZE = new Dimension(380, 220);
+    public static final Dimension FRAME_SIZE = new Dimension(380, 250);
     public static final Dimension LABEL_DESC_SIZE = new Dimension(300, 30);
     public static final Dimension TEXT_FIELD_SIZE = new Dimension(240, 30);
     public static final Dimension DEFAULT_BUTTON_SIZE = new Dimension(120, 30);
     /**
      * Лист байтов для записи в WAV файл
      */
-    public static List<Byte> bytesList = new ArrayList<>();
+    public static volatile List<Byte> bytesList = new LinkedList<>();
     /**
      * Поле для ввода IP адреса
      */
@@ -41,6 +44,10 @@ public class ServerFrame extends JFrame {
      * Поле для ввода порта
      */
     private final JTextField portText;
+    /**
+     * Поле для ввода порта отправки
+     */
+    private final JTextField portSendText;
     /**
      * Порт для принятия пакетов
      */
@@ -92,12 +99,16 @@ public class ServerFrame extends JFrame {
         GuiHelper.setComponentSize(clientLbl, LABEL_DESC_SIZE);
 
         JLabel lblIP = new JLabel(GuiHelper.setHtmlTag("IP address: "));
-        addressIPText = new JTextField("10.255.253.146");
+        addressIPText = new JTextField("10.3.101.1");
         GuiHelper.setComponentSize(addressIPText, TEXT_FIELD_SIZE);
 
         JLabel lblPort = new JLabel(GuiHelper.setHtmlTag("Port to connect: "));
-        portText = new JTextField("8888");
+        portText = new JTextField("5555");
         GuiHelper.setComponentSize(portText, TEXT_FIELD_SIZE);
+
+        JLabel lblPortSend = new JLabel(GuiHelper.setHtmlTag("Port to send: "));
+        portSendText = new JTextField("60100");
+        GuiHelper.setComponentSize(portSendText, TEXT_FIELD_SIZE);
 
         startButton = new JButton("Start");
         startButton.addActionListener(e -> {
@@ -201,6 +212,8 @@ public class ServerFrame extends JFrame {
         add(addressIPText, "wrap, span");
         add(lblPort);
         add(portText, "wrap, span");
+        add(lblPortSend);
+        add(portSendText, "wrap, span");
         add(startButton);
         add(sendButton);
         add(endButton, "wrap");
@@ -238,14 +251,28 @@ public class ServerFrame extends JFrame {
 
 
     /**
-     * Метод для инициализации константного аудио формата
+     * Метод для инициализации константного аудио формата отправки
      *
      * @return Возвращает аудио формат
      */
     public static AudioFormat getAudioFormat() {
-        float sampleRate = 44100.0f;
+        float sampleRate = 8000.0f;
+        int sampleSizeInBits = 8;
+        int channel = 1;
+        boolean signed = true;
+        boolean bigEndian = false;
+        return new AudioFormat(sampleRate, sampleSizeInBits, channel, signed, bigEndian);
+    }
+
+    /**
+     * Метод для инициализации константного аудио формата принятия
+     *
+     * @return Возвращает аудио формат
+     */
+    public static AudioFormat getReceiveAudioFormat() {
+        float sampleRate = 8000.0f;
         int sampleSizeInBits = 16;
-        int channel = 2;
+        int channel = 1;
         boolean signed = true;
         boolean bigEndian = false;
         return new AudioFormat(sampleRate, sampleSizeInBits, channel, signed, bigEndian);
@@ -270,7 +297,7 @@ public class ServerFrame extends JFrame {
      */
     public void initAudioReceive() {
         try {
-            AudioFormat format = getAudioFormat();
+            AudioFormat format = getReceiveAudioFormat();
 
             DataLine.Info infoOut = new DataLine.Info(SourceDataLine.class, format);
             if (!AudioSystem.isLineSupported(infoOut)) {
@@ -318,13 +345,17 @@ public class ServerFrame extends JFrame {
 
             audio_in.open(format);
 
-            AudioInputStream in = new AudioInputStream(audio_in);
+//            AudioInputStream in = new AudioInputStream(audio_in);
+//
+//            AudioFormat ulawFmt = new AudioFormat(AudioFormat.Encoding.ULAW,
+//                    8000.0F, 8, 1, 160, 50, false);
 
-            AudioFormat ulawFmt = new AudioFormat(AudioFormat.Encoding.ULAW,
-                    8000.0F, 8, 1, 1, 8000.0F, false);
-
-            AudioInputStream ulaw = AudioSystem.getAudioInputStream(AudioFormat.Encoding.ULAW, in);
-
+//            int size = audio_in.getBufferSize();
+//
+//            AudioInputStream ulaw = new AudioInputStream(in, new AudioFormat(AudioFormat.Encoding.ULAW,
+//                    8000.0F, 8, 1, 34, 240, false), size );
+//
+//            System.err.println(size);
             audio_in.start();
 
             recorderThread = new RecorderThread();
@@ -332,16 +363,17 @@ public class ServerFrame extends JFrame {
                     addressIPText.getText().isEmpty() ? serverIP : addressIPText.getText()
             );
             recorderThread.audio_in = audio_in;
-            recorderThread.ulaw = ulaw;
+//            recorderThread.ulaw = ulaw;
             recorderThread.datagramSocket = new DatagramSocket();
             recorderThread.serverIP = inetAddress;
-            recorderThread.serverPort = portText.getText().isEmpty() ? port : Integer.parseInt(portText.getText());
+            recorderThread.serverPort = portSendText.getText().isEmpty() ? port : Integer.parseInt(portSendText.getText());
+            System.out.println(recorderThread.serverPort);
             ServerVoice.isCalled = true;
             recorderThread.start();
             startButton.setEnabled(false);
             endButton.setEnabled(true);
 
-        } catch (LineUnavailableException | SocketException | UnknownHostException e) {
+        } catch (LineUnavailableException | UnknownHostException | SocketException e) {
             System.err.println("Ошибка инициализации аудио" + e);
         }
     }

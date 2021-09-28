@@ -1,5 +1,7 @@
 package kirimatt;
 
+import kirimatt.gui.ServerFrame;
+
 public class ServerVoice {
     /**
      * Переменные для манипулирования выполнением потока
