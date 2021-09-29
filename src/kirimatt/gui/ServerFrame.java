@@ -123,7 +123,7 @@ public class ServerFrame extends JFrame {
             clip.ifPresent(Clip::stop);
 
             ServerVoice.isReceive = true;
-            initAudioReceive();
+//            initAudioReceive();
 
             sendButton.setEnabled(true);
 
@@ -174,7 +174,7 @@ public class ServerFrame extends JFrame {
             for (Byte b : bytesList)
                 arrayByte[r++] = b;
             try {
-                writeAudioToWavFile(arrayByte, getAudioFormat(), "sound.wav");
+                writeAudioToWavFile(arrayByte, getReceiveAudioFormat(), "sound.wav");
                 bytesList.clear();
             } catch (Exception exception) {
                 System.err.println("Произошла ошибка при записи файла");
@@ -255,7 +255,7 @@ public class ServerFrame extends JFrame {
      *
      * @return Возвращает аудио формат
      */
-    public static AudioFormat getAudioFormat() {
+    public static AudioFormat getSendAudioFormat() {
         float sampleRate = 8000.0f;
         int sampleSizeInBits = 8;
         int channel = 1;
@@ -333,7 +333,7 @@ public class ServerFrame extends JFrame {
      */
     public void initAudioSend() {
         try {
-            AudioFormat format = getAudioFormat();
+            AudioFormat format = getSendAudioFormat();
 
             DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
             if (!AudioSystem.isLineSupported(info)) {

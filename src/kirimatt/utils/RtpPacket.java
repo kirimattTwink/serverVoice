@@ -4,6 +4,8 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 
 /**
+ * Класс для взаимодействия с RTP пакетами, которые приходят по UDP
+ *
  * @author azamat
  */
 public class RtpPacket {
@@ -12,28 +14,24 @@ public class RtpPacket {
      */
     public static final int BIAS = 0x84;
 
-    static final int SIGN_BIT = 0x80;    // Sign bit for a A-law byte.
-    static final int QUANT_MASK = 0xf;   // Quantization field mask.
-    static final int NSEGS = 8;          // Number of A-law segments.
-    static final int SEG_SHIFT = 4;      // Left shift for segment number.
-    static final int SEG_MASK = 0x70;    // Segment field mask.
+    /**
+     * Коэффициент усиления звука
+     */
+    public static final int SOUND_AMPLIFY = (int) Math.pow(2, 8) - 64;
 
-    static final int[] seg_end = {0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF, 0x1FFF, 0x3FFF, 0x7FFF};
+    /**
+     * Массив для обозначения конца сегмента
+     */
+    public static final int[] SEG_END = {0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF, 0x1FFF, 0x3FFF, 0x7FFF};
 
     /**
      * Начальный отступ для Timestamp переменной
      */
     public static final int TIMESTAMP_SHIFT = 960;
-
-    private byte[] dataPacket;
-    private byte[] packetWithHeader;
-    private short counter;
-    private int unixTime;
-
     /**
      * Массив для декодирования
      */
-    short[] ulaw2L16 = new short[] {
+    short[] uLaw2L16 = new short[]{
             -32124, -31100, -30076, -29052,
             -28028, -27004, -25980, -24956,
             -23932, -22908, -21884, -20860,
@@ -91,10 +89,74 @@ public class RtpPacket {
             112, 104, 96, 88, 80, 72, 64, 56,
             48, 40, 32, 24, 16, 8, 0
     };
+    /**
+     * Данные без заголовка RTP
+     */
+    private byte[] dataPacket;
+    /**
+     * Данные с заголовком RTP
+     */
+    private byte[] packetWithHeader;
+    /**
+     * Счетчик пакетов для SEQUENCE
+     */
+    private short counter;
+    /**
+     * Timestamp RTP пакета
+     */
+    private int timestamp;
 
-    public RtpPacket() {
+    /**
+     * Метод для преобразования линейного звука в CODEC G711 Mu Law
+     *
+     * @param pcm_val единица звука
+     * @return Возвращает закодированную единицу звука
+     */
+    public static int linear2uLaw(int pcm_val) {
+        int mask;
+        int seg;
+        //unsigned char uVal;
+        int uVal;
+
+        // Get the sign and the magnitude of the value.
+        if (pcm_val < 0) {
+            pcm_val = BIAS - pcm_val;
+            mask = 0x7F;
+        } else {
+            pcm_val += BIAS;
+            mask = 0xFF;
+        }
+        // Convert the scaled magnitude to segment number.
+        seg = search(pcm_val, SEG_END);
+
+        // Combine the sign, segment, quantization bits; and complement the code word.
+
+        if (seg >= 8) return (0x7F ^ mask); // out of range, return maximum value.
+        else {
+            uVal = (seg << 4) | ((pcm_val >> (seg + 3)) & 0xF);
+            return (uVal ^ mask);
+        }
     }
 
+    /**
+     * Метод преобразования масштабируемой величины в номер сегмента
+     *
+     * @param val   значение единицы звука
+     * @param table массив с байтами 0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF, 0x1FFF, 0x3FFF, 0x7FFF
+     * @return длину массива
+     */
+    static int search(int val, int[] table) {
+        for (int i = 0; i < table.length; i++) if (val <= table[i]) return i;
+        return table.length;
+    }
+
+    /**
+     * Преобразование в цельный пакет RTP для UDP
+     *
+     * @param inetAddress IP адрес
+     * @param port        Порт
+     * @return Возвращает пакет для передачи по UDP
+     */
     public DatagramPacket getDatagramPacket(InetAddress inetAddress, int port) {
         return new DatagramPacket(
                 packetWithHeader,
@@ -105,7 +167,7 @@ public class RtpPacket {
     }
 
     /**
-     * Добавление заголовка
+     * Добавление заголовка RTP
      */
     public void encode(byte[] dataPacket, short counter) {
         this.dataPacket = dataPacket;
@@ -115,16 +177,16 @@ public class RtpPacket {
         byte lowerByte = (byte) (this.counter & 0xFF);
         byte higherByte = (byte) (this.counter >> 8);
 
-        unixTime = dataPacket.length * counter + TIMESTAMP_SHIFT; // Длина пакета * порядковый номер + начальный сдвиг
+        timestamp = dataPacket.length * counter + TIMESTAMP_SHIFT; // Длина пакета * порядковый номер + начальный сдвиг
 
         packetWithHeader[0] = (byte) 0x80;//const
         packetWithHeader[1] = (byte) 0x00;//const
         packetWithHeader[2] = higherByte;//volatile frame number
         packetWithHeader[3] = lowerByte;//volatile frame number
-        packetWithHeader[4] = (byte) (unixTime >> 24);//volatile timestamp
-        packetWithHeader[5] = (byte) (unixTime >> 16);//volatile timestamp
-        packetWithHeader[6] = (byte) (unixTime >> 8);//volatile timestamp
-        packetWithHeader[7] = (byte) (unixTime);//volatile timestamp
+        packetWithHeader[4] = (byte) (timestamp >> 24);//volatile timestamp
+        packetWithHeader[5] = (byte) (timestamp >> 16);//volatile timestamp
+        packetWithHeader[6] = (byte) (timestamp >> 8);//volatile timestamp
+        packetWithHeader[7] = (byte) (timestamp);//volatile timestamp
         packetWithHeader[8] = (byte) 0x02;//volatile ssrc?? once at session
         packetWithHeader[9] = (byte) 0x43;//volatile ssrc?? once at session
         packetWithHeader[10] = (byte) 0x91;//volatile ssrc?? once at session
@@ -143,12 +205,12 @@ public class RtpPacket {
     /**
      * Кодирование Mu Law RTP пакета.
      * В применение к нему строго определять Аудио-Формат.
-     * Обратить внимание к Sample Size In Bits, которое для энкода равняется 8.
+     * Обратить внимание к Sample Size In Bits, которое для ENCODE равняется 8.
      */
     public void encodeG711(byte[] dataPacket, short counter) {
 
         for (int i = 0; i < dataPacket.length; i++) {
-            dataPacket[i] = (byte) linear2ulaw(dataPacket[i]);
+            dataPacket[i] = (byte) (linear2uLaw(dataPacket[i] * SOUND_AMPLIFY));
         }
 
         encode(dataPacket, counter);
@@ -156,13 +218,14 @@ public class RtpPacket {
 
     /**
      * Декодирование RTP пакета.
+     *
      * @param data Массив байт данных, включая заголовок
      * @return Возвращает массив байт данных за исключением заголовка
      */
     public byte[] decode(byte[] data) {
         this.counter = (short) (((0xFF & data[2]) << 8) | (0xFF & data[3]));
 
-        this.unixTime = ((0xFF & data[4]) << 24) | ((0xFF & data[5]) << 16) |
+        this.timestamp = ((0xFF & data[4]) << 24) | ((0xFF & data[5]) << 16) |
                 ((0xFF & data[6]) << 8) | (0xFF & data[7]);
 
         this.dataPacket = new byte[data.length - 12];
@@ -181,53 +244,22 @@ public class RtpPacket {
     /**
      * Декодирование Mu Law RTP пакета.
      * В применение к нему строго определять Аудио-Формат.
-     * Обратить внимание к Sample Size In Bits, которое для декода равняется 16.
+     * Обратить внимание к Sample Size In Bits, которое для DECODE равняется 16.
      *
      * @param data массив байт данных, включая заголовок
      * @return output массив байт данных в два раза больший чем на входе, вычитая заголовок.
      */
     public byte[] decodeG711(byte[] data) {
-        decode(data);
+        this.dataPacket = decode(data);
 
-        byte[] output = new byte[dataPacket.length*2];
+        byte[] output = new byte[dataPacket.length * 2];
 
         for (int j = 0; j < dataPacket.length; j++) {
 
-            output[j * 2] = (byte) (0x00FF & ulaw2L16[dataPacket[j] + 128]);
-            output[j * 2 + 1] = (byte) ((0xFF00 & ulaw2L16[dataPacket[j] + 128]) >> 8);
+            output[j * 2] = (byte) (0x00FF & uLaw2L16[dataPacket[j] + 128]);
+            output[j * 2 + 1] = (byte) ((0xFF00 & uLaw2L16[dataPacket[j] + 128]) >> 8);
 
         }
         return output;
-    }
-
-    public static int linear2ulaw(int pcm_val) {
-        int mask;
-        int seg;
-        //unsigned char uval;
-        int uval;
-
-        // Get the sign and the magnitude of the value.
-        if (pcm_val < 0) {
-            pcm_val = BIAS - pcm_val;
-            mask = 0x7F;
-        } else {
-            pcm_val += BIAS;
-            mask = 0xFF;
-        }
-        // Convert the scaled magnitude to segment number.
-        seg = search(pcm_val, seg_end);
-
-        // Combine the sign, segment, quantization bits; and complement the code word.
-
-        if (seg >= 8) return (0x7F ^ mask); // out of range, return maximum value.
-        else {
-            uval = (seg << 4) | ((pcm_val >> (seg + 3)) & 0xF);
-            return (uval ^ mask);
-        }
-    }
-
-    static int search(int val, int[] table) {
-        for (int i = 0; i < table.length; i++) if (val <= table[i]) return i;
-        return table.length;
     }
 }

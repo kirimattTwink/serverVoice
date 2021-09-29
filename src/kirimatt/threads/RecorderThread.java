@@ -45,19 +45,16 @@ public class RecorderThread extends Thread {
     byte[] byteBuffer = new byte[LENGTH_BYTES];
 
 
-
-
-
     @Override
     public void run() {
 
         //TODO: На время тестов
 //        if (!ServerVoice.isReceive) {
-            int i = 0;
-            while (ServerVoice.isCalled && ServerVoice.isPressedSend) {
-                try {
+        int i = 0;
+        while (ServerVoice.isCalled && ServerVoice.isPressedSend) {
+            try {
 
-                    int len = audio_in.read(byteBuffer, 0, byteBuffer.length);
+                int len = audio_in.read(byteBuffer, 0, byteBuffer.length);
 
 
 ////                    AudioInputStream in = new AudioInputStream(audio_in);
@@ -97,21 +94,21 @@ public class RecorderThread extends Thread {
 ////                    );
 //
 //                    DatagramPacket data = new DatagramPacket(endByteDataUlaw, endByteDataUlaw.length, InetAddress.getByName("10.3.101.1"), 60510);
-                    RtpPacket rtpPacket = new RtpPacket();
+                RtpPacket rtpPacket = new RtpPacket();
 
-                    rtpPacket.encodeG711(byteBuffer, (short) i);
+                rtpPacket.encodeG711(byteBuffer, (short) i);
 
-                    System.out.println("send " + i++);
-                    datagramSocket.send(rtpPacket.getDatagramPacket(InetAddress.getByName("10.3.201.1"), serverPort));
+                System.out.println("send " + i++);
+                datagramSocket.send(rtpPacket.getDatagramPacket(InetAddress.getByName("10.3.201.1"), serverPort));
 //                    for (byte b : byteBuffer)
 //                        ServerFrame.bytesList.add(b);
-                } catch (IOException e) {
-                    System.err.println("Ошибка во время выполнения потока");
-                }
+            } catch (IOException e) {
+                System.err.println("Ошибка во время выполнения потока");
             }
-            audio_in.close();
-            audio_in.drain();
-            System.out.println("Thread stop");
+        }
+        audio_in.close();
+        audio_in.drain();
+        System.out.println("Thread stop");
 //        } else
 //            System.out.println("Receive now!");
     }
