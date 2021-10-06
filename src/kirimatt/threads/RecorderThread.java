@@ -1,13 +1,22 @@
 package kirimatt.threads;
 
-import kirimatt.ServerVoice;
+import kirimatt.eventHandler.EventCallMonitor;
+import kirimatt.eventHandler.events.CalledEvent;
+import kirimatt.eventHandler.events.DuplexEvent;
+import kirimatt.eventHandler.events.PressedSendEvent;
+import kirimatt.eventHandler.events.ReceiveEvent;
+import kirimatt.utils.CallMonitor;
 import kirimatt.utils.RtpPacket;
+import kirimatt.utils.VoiceApplication;
 
 import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.TargetDataLine;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.Arrays;
 
 /**
  * Класс потока для передачи записанного аудио
@@ -34,7 +43,7 @@ public class RecorderThread extends Thread {
     /**
      * Интернет адрес сервера
      */
-    public InetAddress serverIP;
+    public InetAddress serverAddress;
     /**
      * Порт сервера
      */
@@ -44,72 +53,70 @@ public class RecorderThread extends Thread {
      */
     byte[] byteBuffer = new byte[LENGTH_BYTES];
 
-
     @Override
     public void run() {
 
         //TODO: На время тестов
-//        if (!ServerVoice.isReceive) {
-        int i = 0;
-        while (ServerVoice.isCalled && ServerVoice.isPressedSend) {
-            try {
+        if (!CallMonitor.parseGetEvent(new ReceiveEvent()) || CallMonitor.parseGetEvent(new DuplexEvent())) {
+            //Случай для того, когда принятых данных больше, чем отправленных.
+//            if(VoiceApplication.bytesListSend.size() < VoiceApplication.bytesListReceive.size()) {
+//                for (
+//                        int silentIterate = 0;
+//                        silentIterate < VoiceApplication.bytesListReceive.size()-VoiceApplication.bytesListSend.size();
+//                        silentIterate++
+//                )
+//                    VoiceApplication.bytesListSend.add((byte)0); //Заполняет недостающую длину тишиной.
+//            }
+            int i = 0;
 
-                int len = audio_in.read(byteBuffer, 0, byteBuffer.length);
+            byte[] bytesReadable = new byte[LENGTH_BYTES*2-24];
+            byte[] ref = new byte[LENGTH_BYTES];
 
+            EventCallMonitor isCalled = new CalledEvent();
+            EventCallMonitor isPressedSend = new PressedSendEvent();
 
-////                    AudioInputStream in = new AudioInputStream(audio_in);
-////                    CompressInputStream compressInputStream = new CompressInputStream(in, false);
-////                    int len = compressInputStream.read(byteBuffer);
-//
-////                    System.err.println("1");
+            while (CallMonitor.parseGetEvent(isCalled)
+                    && CallMonitor.parseGetEvent(isPressedSend)) {
+                try {
 
-//                    //Должен ли я использовать len для чего-то?
-////                    System.err.println(Arrays.toString(byteBuffer));
+                    int len = audio_in.read(byteBuffer, 0, byteBuffer.length);
 
-//                    int len = audio_in.read(byteBuffer, 0, byteBuffer.length);
+                    System.arraycopy(
+                            byteBuffer,
+                            0,
+                            ref,
+                            0,
+                            byteBuffer.length
+                    );
 
-//                    short[] dataAudio = new short[len];
-//                    for (int j = 0; j < len; j++) {
-//                        dataAudio[j] = byteBuffer[j];
-//                    }
-//                    byte[] endByteDataUlaw = new byte[252];
-////                    System.arraycopy(
-////                            getByteArray(dataAudio),
-////                            0,
-////                            endByteDataUlaw,
-////                            12
-////                    );
-//
-//
-//
-////                    byte[] endByteDataUlaw = getByteArray(dataAudio);
-////                    System.out.println(len + ", " + endByteDataUlaw.length);
-////                    RtpPacket data = new RtpPacket(new ByteBufferKaitaiStream(endByteDataUlaw));
-//////                    DatagramPacket data = new RtpPacket(endByteDataUlaw, endByteDataUlaw.length, InetAddress.getByName("10.3.101.1"), 60510);
-////                    DatagramPacket datagramPacket = new DatagramPacket(
-////                            data.headerExtension(),
-////                            252,
-////                            InetAddress.getByName("10.3.101.1"),
-////                            60510
-////                    );
-//
-//                    DatagramPacket data = new DatagramPacket(endByteDataUlaw, endByteDataUlaw.length, InetAddress.getByName("10.3.101.1"), 60510);
-                RtpPacket rtpPacket = new RtpPacket();
+                    RtpPacket rtpPacket = new RtpPacket();
 
-                rtpPacket.encodeG711(byteBuffer, (short) i);
+                    rtpPacket.encodeG711(byteBuffer, (short) i);
 
-                System.out.println("send " + i++);
-                datagramSocket.send(rtpPacket.getDatagramPacket(InetAddress.getByName("10.3.201.1"), serverPort));
-//                    for (byte b : byteBuffer)
-//                        ServerFrame.bytesList.add(b);
-            } catch (IOException e) {
-                System.err.println("Ошибка во время выполнения потока");
-            }
+                    System.out.println("send " + i++);
+                    datagramSocket.send(rtpPacket.getDatagramPacket(serverAddress, serverPort));
+
+                    //Тишина была тут
+
+                    AudioInputStream ais = new AudioInputStream(new ByteArrayInputStream(ref), VoiceApplication.getSendAudioFormat(), ref.length);
+                    AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(
+                            VoiceApplication.getReceiveAudioFormat(),
+                            ais
+                    );
+                    int lenReadable = audioInputStream.read(bytesReadable);
+                    System.out.println(Arrays.toString(bytesReadable));
+                    for (byte b : bytesReadable) {
+                        VoiceApplication.bytesListSend.add(b);
+                    }
+
+                } catch (IOException e) {
+                    System.err.println("Ошибка во время выполнения потока");
+                }
         }
         audio_in.close();
         audio_in.drain();
         System.out.println("Thread stop");
-//        } else
-//            System.out.println("Receive now!");
+        } else
+            System.out.println("Receive now!");
     }
 }

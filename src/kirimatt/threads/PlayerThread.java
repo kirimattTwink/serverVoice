@@ -1,8 +1,11 @@
 package kirimatt.threads;
 
-import kirimatt.ServerVoice;
-import kirimatt.gui.ServerFrame;
+import kirimatt.eventHandler.EventCallMonitor;
+import kirimatt.eventHandler.events.CalledEvent;
+import kirimatt.eventHandler.events.ReceiveEvent;
+import kirimatt.utils.CallMonitor;
 import kirimatt.utils.RtpPacket;
+import kirimatt.utils.VoiceApplication;
 
 import javax.sound.sampled.SourceDataLine;
 import java.io.IOException;
@@ -42,13 +45,19 @@ public class PlayerThread extends Thread {
     public void run() {
         int i = 0;
         DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
-        ServerVoice.isReceive = false;
+
+        CallMonitor.parseSetEvent(new ReceiveEvent(false));
+
         try {
             din.setSoTimeout(1000);
         } catch (SocketException e) {
             e.printStackTrace();
         }
-        while (ServerVoice.isCalled) {
+
+        EventCallMonitor isCalled = new CalledEvent();
+        EventCallMonitor isReceiveEnabled = new ReceiveEvent(true);
+
+        while (CallMonitor.parseGetEvent(isCalled)) {
 
             try {
                 din.receive(incoming);
@@ -58,14 +67,16 @@ public class PlayerThread extends Thread {
                 RtpPacket rtpPacket = new RtpPacket();
                 byte[] outbuf = rtpPacket.decodeG711(buffer);
 
-                ServerVoice.isReceive = true;
+                CallMonitor.parseSetEvent(isReceiveEnabled);
 
                 audioOut.write(outbuf, 0, outbuf.length);
 
                 for (byte b : outbuf)
-                    ServerFrame.bytesList.add(b);
+                    VoiceApplication.bytesListReceive.add(b);
             } catch (SocketTimeoutException e) {
-                ServerVoice.isReceive = false;
+
+                CallMonitor.parseSetEvent(new ReceiveEvent(false));
+
             } catch (IOException e) {
                 System.err.println("Ошибка во время выполнения потока " + e);
             }
@@ -74,7 +85,7 @@ public class PlayerThread extends Thread {
         audioOut.close();
         audioOut.drain();
 
-        ServerVoice.isReceive = false;
+        CallMonitor.parseSetEvent(new ReceiveEvent(false));
 
         System.out.println("Stop");
     }

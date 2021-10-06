@@ -1,24 +1,13 @@
 package kirimatt.gui;
 
 import components.GuiHelper;
-import kirimatt.ServerVoice;
-import kirimatt.threads.PlayerThread;
-import kirimatt.threads.RecorderThread;
+import kirimatt.eventHandler.events.CalledEvent;
+import kirimatt.utils.CallMonitor;
+import kirimatt.utils.VoiceApplication;
 import net.miginfocom.swing.MigLayout;
 
-import javax.sound.sampled.*;
 import javax.swing.*;
 import java.awt.*;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
-import java.net.UnknownHostException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
 
 /**
  * Главный фрейм приложения
@@ -33,10 +22,6 @@ public class ServerFrame extends JFrame {
     public static final Dimension TEXT_FIELD_SIZE = new Dimension(240, 30);
     public static final Dimension DEFAULT_BUTTON_SIZE = new Dimension(120, 30);
     /**
-     * Лист байтов для записи в WAV файл
-     */
-    public static volatile List<Byte> bytesList = new LinkedList<>();
-    /**
      * Поле для ввода IP адреса
      */
     private final JTextField addressIPText;
@@ -49,35 +34,6 @@ public class ServerFrame extends JFrame {
      */
     private final JTextField portSendText;
     /**
-     * Порт для принятия пакетов
-     */
-    public int port = 8888;
-    /**
-     * IP адрес по умолчанию
-     */
-    public String serverIP = "127.0.0.1";
-    /**
-     * Сокет
-     */
-    public DatagramSocket datagramSocket;
-    /**
-     * Поток с принятием пакетов
-     */
-    public PlayerThread playerThread;
-    /**
-     * Поток с отправкой пакетов
-     */
-    public RecorderThread recorderThread;
-    /**
-     * Микшер для вывода
-     */
-    public SourceDataLine audioOut;
-    /**
-     * Клип для воспроизведения файла
-     */
-    @SuppressWarnings("all")
-    public Optional<Clip> clip = Optional.empty();
-    /**
      * Кнопка начала воспроизведения записанного файла
      */
     public JButton startButton;
@@ -89,8 +45,14 @@ public class ServerFrame extends JFrame {
      * Кнопка для отправки пакетов
      */
     public JButton sendButton;
+    /**
+     * Состояние кнопки отправки
+     */
+    public boolean isTurnedOn = false;
 
     public ServerFrame() throws HeadlessException {
+
+        VoiceApplication voiceApplication = new VoiceApplication();
 
         this.setLayout(new MigLayout());
         this.setSize(FRAME_SIZE);
@@ -98,63 +60,45 @@ public class ServerFrame extends JFrame {
         JLabel clientLbl = new JLabel(GuiHelper.setHtmlTag("NEW SKYPE v2.0"));
         GuiHelper.setComponentSize(clientLbl, LABEL_DESC_SIZE);
 
-        JLabel lblIP = new JLabel(GuiHelper.setHtmlTag("IP address: "));
+        JLabel lblIP = new JLabel(GuiHelper.setHtmlTag("IP address send: "));
         addressIPText = new JTextField("10.3.101.1");
         GuiHelper.setComponentSize(addressIPText, TEXT_FIELD_SIZE);
-
-        JLabel lblPort = new JLabel(GuiHelper.setHtmlTag("Port to connect: "));
-        portText = new JTextField("5555");
-        GuiHelper.setComponentSize(portText, TEXT_FIELD_SIZE);
 
         JLabel lblPortSend = new JLabel(GuiHelper.setHtmlTag("Port to send: "));
         portSendText = new JTextField("60100");
         GuiHelper.setComponentSize(portSendText, TEXT_FIELD_SIZE);
 
+        JLabel lblPort = new JLabel(GuiHelper.setHtmlTag("Port to receive: "));
+        portText = new JTextField("5555");
+        GuiHelper.setComponentSize(portText, TEXT_FIELD_SIZE);
+
         startButton = new JButton("Start");
         startButton.addActionListener(e -> {
 
-            if (datagramSocket == null || Integer.parseInt(portText.getText()) != datagramSocket.getLocalPort()) {
-                try {
-                    datagramSocket = new DatagramSocket(portText.getText().isEmpty() ? port : Integer.parseInt(portText.getText()));
-                } catch (SocketException ex) {
-                    System.err.println("Не удалось открыть сокет");
-                }
-            }
-            clip.ifPresent(Clip::stop);
-
-            ServerVoice.isReceive = true;
-//            initAudioReceive();
+            voiceApplication.setServerReceivePort(Integer.parseInt(portText.getText()));
+            voiceApplication.start();
 
             sendButton.setEnabled(true);
+            endButton.setEnabled(true);
 
         });
         GuiHelper.setComponentSize(startButton, DEFAULT_BUTTON_SIZE);
 
-
         sendButton = new JButton("Talk");
         sendButton.addActionListener(e -> {
 
-            if (!ServerVoice.isTalking) {
-                if (datagramSocket == null || Integer.parseInt(portText.getText()) != datagramSocket.getLocalPort()) {
-                    try {
-                        datagramSocket = new DatagramSocket(portText.getText().isEmpty() ? port : Integer.parseInt(portText.getText()));
-                    } catch (SocketException ex) {
-                        System.err.println("Не удалось открыть сокет");
-                    }
-                }
-                clip.ifPresent(Clip::stop);
+            voiceApplication.setServerSendPort(Integer.parseInt(portSendText.getText()));
+            voiceApplication.setServerSendIP(addressIPText.getText());
 
-                ServerVoice.isPressedSend = true;
+            voiceApplication.talk();
 
-                initAudioSend();
-
-                ServerVoice.isTalking = true;
-                if (!ServerVoice.isReceive)
-                    sendButton.setText("Shut");
-            } else {
-                ServerVoice.isPressedSend = false;
-                ServerVoice.isTalking = false;
+            if (!isTurnedOn) {
+                sendButton.setText("Shut");
+                isTurnedOn = true;
+            }
+            else {
                 sendButton.setText("Talk");
+                isTurnedOn = false;
             }
 
         });
@@ -164,47 +108,22 @@ public class ServerFrame extends JFrame {
         endButton = new JButton("End");
         endButton.addActionListener(e -> {
 
-            ServerVoice.isCalled = false;
             startButton.setEnabled(true);
             endButton.setEnabled(false);
             sendButton.setEnabled(false);
 
-            byte[] arrayByte = new byte[bytesList.size()];
-            int r = 0;
-            for (Byte b : bytesList)
-                arrayByte[r++] = b;
-            try {
-                writeAudioToWavFile(arrayByte, getReceiveAudioFormat(), "sound.wav");
-                bytesList.clear();
-            } catch (Exception exception) {
-                System.err.println("Произошла ошибка при записи файла");
-            }
+            voiceApplication.end();
 
         });
         GuiHelper.setComponentSize(endButton, DEFAULT_BUTTON_SIZE);
         endButton.setEnabled(false);
 
         JButton clipStartButton = new JButton("Clip Start");
-        clipStartButton.addActionListener(e -> {
-
-            File file = new File("sound.wav");
-            AudioInputStream audioInputStream;
-            try {
-                audioInputStream = AudioSystem.getAudioInputStream(file);
-
-                clip = Optional.of(AudioSystem.getClip());
-                clip.get().open(audioInputStream);
-                clip.get().start();
-
-            } catch (UnsupportedAudioFileException | IOException | LineUnavailableException ex) {
-                System.err.println("Возникла ошибка при воспроизведении файла");
-            }
-
-        });
+        clipStartButton.addActionListener(e -> voiceApplication.clipStart());
         GuiHelper.setComponentSize(clipStartButton, DEFAULT_BUTTON_SIZE);
 
         JButton clipEndButton = new JButton("Clip End");
-        clipEndButton.addActionListener(e -> clip.ifPresent(Clip::stop));
+        clipEndButton.addActionListener(e -> voiceApplication.clipEnd());
         GuiHelper.setComponentSize(clipEndButton, DEFAULT_BUTTON_SIZE);
 
         add(clientLbl, "gapleft 120 ,right, wrap, span");
@@ -222,164 +141,11 @@ public class ServerFrame extends JFrame {
         //TODO: Исправить выход на более изящный.
         setDefaultCloseOperation(onCloseFrame());
 
-//        this.addKeyListener(new KeyListener() {
-//
-//
-//            @Override
-//            public void keyTyped(KeyEvent e) {
-//
-//            }
-//
-//            @Override
-//            public void keyPressed(KeyEvent e) {
-//                System.out.println("Key pressed code=" + e.getKeyCode() + ", char=" + e.getKeyChar());
-//                if (e.getKeyCode() == KeyEvent.VK_SPACE) {
-//                    System.err.println("1");
-//                    ServerVoice.isPressedSend = true;
-//                    recorderThread.start();
-//                }
-//            }
-//
-//            @Override
-//            public void keyReleased(KeyEvent e) {
-//                if (e.getKeyCode() == KeyEvent.VK_SPACE) {
-//                    ServerVoice.isPressedSend = false;
-//                }
-//            }
-//        });
     }
 
+    public static int onCloseFrame() {
+        CallMonitor.parseSetEvent(new CalledEvent(false));
 
-    /**
-     * Метод для инициализации константного аудио формата отправки
-     *
-     * @return Возвращает аудио формат
-     */
-    public static AudioFormat getSendAudioFormat() {
-        float sampleRate = 8000.0f;
-        int sampleSizeInBits = 8;
-        int channel = 1;
-        boolean signed = true;
-        boolean bigEndian = false;
-        return new AudioFormat(sampleRate, sampleSizeInBits, channel, signed, bigEndian);
-    }
-
-    /**
-     * Метод для инициализации константного аудио формата принятия
-     *
-     * @return Возвращает аудио формат
-     */
-    public static AudioFormat getReceiveAudioFormat() {
-        float sampleRate = 8000.0f;
-        int sampleSizeInBits = 16;
-        int channel = 1;
-        boolean signed = true;
-        boolean bigEndian = false;
-        return new AudioFormat(sampleRate, sampleSizeInBits, channel, signed, bigEndian);
-    }
-
-    /**
-     * Метод для записи в WAV файл
-     *
-     * @param data   Байты
-     * @param format Формат аудио
-     * @param fn     Строка пути к новому файлу
-     * @throws Exception Ошибка при записи файла
-     */
-    public static void writeAudioToWavFile(byte[] data, AudioFormat format, String fn) throws Exception {
-        AudioInputStream ais = new AudioInputStream(new ByteArrayInputStream(data), format, data.length);
-        AudioSystem.write(ais, AudioFileFormat.Type.WAVE, new File(fn));
-    }
-
-    /**
-     * Инициализация аудио.
-     * Запускает поток проигрывателя
-     */
-    public void initAudioReceive() {
-        try {
-            AudioFormat format = getReceiveAudioFormat();
-
-            DataLine.Info infoOut = new DataLine.Info(SourceDataLine.class, format);
-            if (!AudioSystem.isLineSupported(infoOut)) {
-                System.out.println("Not support");
-                System.exit(0);
-            }
-
-            audioOut = (SourceDataLine) AudioSystem.getLine(infoOut);
-
-            audioOut.open(format);
-
-            audioOut.start();
-
-            playerThread = new PlayerThread();
-
-            playerThread.din = datagramSocket;
-            playerThread.audioOut = audioOut;
-
-            ServerVoice.isCalled = true;
-            playerThread.start();
-
-            endButton.setEnabled(true);
-            startButton.setEnabled(false);
-
-        } catch (LineUnavailableException e) {
-            System.err.println("Линия не доступна");
-        }
-    }
-
-    /**
-     * Метод по инициализации аудио.
-     * Запускает поток передачи пакетов с аудио.
-     */
-    public void initAudioSend() {
-        try {
-            AudioFormat format = getSendAudioFormat();
-
-            DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
-            if (!AudioSystem.isLineSupported(info)) {
-                System.out.println("Not support");
-                System.exit(0);
-            }
-
-            TargetDataLine audio_in = (TargetDataLine) AudioSystem.getLine(info);
-
-            audio_in.open(format);
-
-//            AudioInputStream in = new AudioInputStream(audio_in);
-//
-//            AudioFormat ulawFmt = new AudioFormat(AudioFormat.Encoding.ULAW,
-//                    8000.0F, 8, 1, 160, 50, false);
-
-//            int size = audio_in.getBufferSize();
-//
-//            AudioInputStream ulaw = new AudioInputStream(in, new AudioFormat(AudioFormat.Encoding.ULAW,
-//                    8000.0F, 8, 1, 34, 240, false), size );
-//
-//            System.err.println(size);
-            audio_in.start();
-
-            recorderThread = new RecorderThread();
-            InetAddress inetAddress = InetAddress.getByName(
-                    addressIPText.getText().isEmpty() ? serverIP : addressIPText.getText()
-            );
-            recorderThread.audio_in = audio_in;
-//            recorderThread.ulaw = ulaw;
-            recorderThread.datagramSocket = new DatagramSocket();
-            recorderThread.serverIP = inetAddress;
-            recorderThread.serverPort = portSendText.getText().isEmpty() ? port : Integer.parseInt(portSendText.getText());
-            System.out.println(recorderThread.serverPort);
-            ServerVoice.isCalled = true;
-            recorderThread.start();
-            startButton.setEnabled(false);
-            endButton.setEnabled(true);
-
-        } catch (LineUnavailableException | UnknownHostException | SocketException e) {
-            System.err.println("Ошибка инициализации аудио" + e);
-        }
-    }
-
-    public int onCloseFrame() {
-        ServerVoice.isCalled = false;
         return JFrame.EXIT_ON_CLOSE;
     }
 }

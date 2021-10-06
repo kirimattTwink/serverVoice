@@ -17,7 +17,7 @@ public class RtpPacket {
     /**
      * Коэффициент усиления звука
      */
-    public static final int SOUND_AMPLIFY = (int) Math.pow(2, 8) - 64;
+    public static final int SOUND_AMPLIFY = (int) Math.pow(2, 10);
 
     /**
      * Массив для обозначения конца сегмента
@@ -151,7 +151,7 @@ public class RtpPacket {
     }
 
     /**
-     * Преобразование в цельный пакет RTP для UDP
+     * Преобразование в цельный пакет UDP из RTP пакета
      *
      * @param inetAddress IP адрес
      * @param port        Порт
@@ -187,10 +187,10 @@ public class RtpPacket {
         packetWithHeader[5] = (byte) (timestamp >> 16);//volatile timestamp
         packetWithHeader[6] = (byte) (timestamp >> 8);//volatile timestamp
         packetWithHeader[7] = (byte) (timestamp);//volatile timestamp
-        packetWithHeader[8] = (byte) 0x02;//volatile ssrc?? once at session
-        packetWithHeader[9] = (byte) 0x43;//volatile ssrc?? once at session
-        packetWithHeader[10] = (byte) 0x91;//volatile ssrc?? once at session
-        packetWithHeader[11] = (byte) 0xFA;//volatile ssrc?? once at session
+        packetWithHeader[8] = (byte) 0x02;//volatile ssrc, once at session, unique for one terminal
+        packetWithHeader[9] = (byte) 0x43;//volatile ssrc, once at session, unique for one terminal
+        packetWithHeader[10] = (byte) 0x91;//volatile ssrc, once at session, unique for one terminal
+        packetWithHeader[11] = (byte) 0xFA;//volatile ssrc, once at session, unique for one terminal
 
         System.arraycopy(
                 this.dataPacket,
@@ -209,8 +209,26 @@ public class RtpPacket {
      */
     public void encodeG711(byte[] dataPacket, short counter) {
 
+//        byte[] bufferAverage = new byte[dataPacket.length];
+//
+//        System.arraycopy(
+//                dataPacket,
+//                0,
+//                bufferAverage,
+//                0,
+//                dataPacket.length
+//        );
+
         for (int i = 0; i < dataPacket.length; i++) {
-            dataPacket[i] = (byte) (linear2uLaw(dataPacket[i] * SOUND_AMPLIFY));
+
+            dataPacket[i] = (byte) (linear2uLaw(
+                    (int) (
+                            Math.log1p(
+                                    (float) dataPacket[i]
+                            ) * SOUND_AMPLIFY
+                    )
+            ));
+
         }
 
         encode(dataPacket, counter);
