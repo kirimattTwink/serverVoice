@@ -105,6 +105,7 @@ public class RecorderThread extends Thread {
                     );
                     int lenReadable = audioInputStream.read(bytesReadable);
                     System.out.println(Arrays.toString(bytesReadable));
+
                     for (byte b : bytesReadable) {
                         VoiceApplication.bytesListSend.add(b);
                     }

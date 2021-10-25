@@ -61,7 +61,7 @@ public class ServerFrame extends JFrame {
         GuiHelper.setComponentSize(clientLbl, LABEL_DESC_SIZE);
 
         JLabel lblIP = new JLabel(GuiHelper.setHtmlTag("IP address send: "));
-        addressIPText = new JTextField("10.3.101.1");
+        addressIPText = new JTextField("10.3.201.1");
         GuiHelper.setComponentSize(addressIPText, TEXT_FIELD_SIZE);
 
         JLabel lblPortSend = new JLabel(GuiHelper.setHtmlTag("Port to send: "));
@@ -129,10 +129,10 @@ public class ServerFrame extends JFrame {
         add(clientLbl, "gapleft 120 ,right, wrap, span");
         add(lblIP);
         add(addressIPText, "wrap, span");
-        add(lblPort);
-        add(portText, "wrap, span");
         add(lblPortSend);
         add(portSendText, "wrap, span");
+        add(lblPort);
+        add(portText, "wrap, span");
         add(startButton);
         add(sendButton);
         add(endButton, "wrap");
