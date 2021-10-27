@@ -16,9 +16,9 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * @author azamat
@@ -27,11 +27,11 @@ public class VoiceApplication {
     /**
      * Лист байтов для записи в WAV файл
      */
-    public static volatile List<Byte> bytesListReceive = new ArrayList<>();
+    private static volatile List<Byte> bytesListReceive = new CopyOnWriteArrayList<>();
     /**
      * Лист байтов для записи в WAV файл
      */
-    public static volatile List<Byte> bytesListSend = new ArrayList<>();
+    private static volatile List<Byte> bytesListSend = new CopyOnWriteArrayList<>();
     /**
      * Порт для принятия пакетов
      */
@@ -113,6 +113,22 @@ public class VoiceApplication {
         boolean signed = true;
         boolean bigEndian = false;
         return new AudioFormat(sampleRate, sampleSizeInBits, channel, signed, bigEndian);
+    }
+
+    /**
+     * Метод для добавления байт, которые будут отсылаться
+     * Для дальнейшей записи в WAV.
+     */
+    public static void addToSendBytes(byte b) {
+        bytesListSend.add(b);
+    }
+
+    /**
+     * Метод для добавления байт, которые принимаются
+     * Для дальнейшей записи в WAV.
+     */
+    public static void addToReceiveBytes(byte b) {
+        bytesListReceive.add(b);
     }
 
     public void start() {

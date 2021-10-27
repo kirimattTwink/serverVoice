@@ -107,7 +107,7 @@ public class RecorderThread extends Thread {
                     System.out.println(Arrays.toString(bytesReadable));
 
                     for (byte b : bytesReadable) {
-                        VoiceApplication.bytesListSend.add(b);
+                        VoiceApplication.addToSendBytes(b);
                     }
 
                 } catch (IOException e) {

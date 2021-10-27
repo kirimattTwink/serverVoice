@@ -72,7 +72,7 @@ public class PlayerThread extends Thread {
                 audioOut.write(outbuf, 0, outbuf.length);
 
                 for (byte b : outbuf)
-                    VoiceApplication.bytesListReceive.add(b);
+                    VoiceApplication.addToReceiveBytes(b);
             } catch (SocketTimeoutException e) {
 
                 CallMonitor.parseSetEvent(new ReceiveEvent(false));
