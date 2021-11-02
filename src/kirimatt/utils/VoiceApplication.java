@@ -27,11 +27,11 @@ public class VoiceApplication {
     /**
      * Лист байтов для записи в WAV файл
      */
-    private static volatile List<Byte> bytesListReceive = new CopyOnWriteArrayList<>();
+    private static final List<Byte> bytesListReceive = new CopyOnWriteArrayList<>();
     /**
      * Лист байтов для записи в WAV файл
      */
-    private static volatile List<Byte> bytesListSend = new CopyOnWriteArrayList<>();
+    private static final List<Byte> bytesListSend = new CopyOnWriteArrayList<>();
     /**
      * Порт для принятия пакетов
      */
@@ -283,7 +283,7 @@ public class VoiceApplication {
             InetAddress inetAddress = InetAddress.getByName(
                     serverSendIP
             );
-            recorderThread.audio_in = audio_in;
+            recorderThread.audioIn = audio_in;
             recorderThread.datagramSocket = new DatagramSocket();
             recorderThread.serverAddress = inetAddress;
             recorderThread.serverPort = serverSendPort;

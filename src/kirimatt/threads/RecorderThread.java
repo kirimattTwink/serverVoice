@@ -31,7 +31,7 @@ public class RecorderThread extends Thread {
     /**
      * Микшер целевого прослушиваемого устройства
      */
-    public TargetDataLine audio_in = null;
+    public TargetDataLine audioIn = null;
     /**
      * Кодировка
      */
@@ -56,7 +56,6 @@ public class RecorderThread extends Thread {
     @Override
     public void run() {
 
-        //TODO: На время тестов
         if (!CallMonitor.parseGetEvent(new ReceiveEvent()) || CallMonitor.parseGetEvent(new DuplexEvent())) {
             //Случай для того, когда принятых данных больше, чем отправленных.
 //            if(VoiceApplication.bytesListSend.size() < VoiceApplication.bytesListReceive.size()) {
@@ -79,7 +78,7 @@ public class RecorderThread extends Thread {
                     && CallMonitor.parseGetEvent(isPressedSend)) {
                 try {
 
-                    int len = audio_in.read(byteBuffer, 0, byteBuffer.length);
+                    int len = audioIn.read(byteBuffer, 0, byteBuffer.length);
 
                     System.arraycopy(
                             byteBuffer,
@@ -114,8 +113,8 @@ public class RecorderThread extends Thread {
                     System.err.println("Ошибка во время выполнения потока");
                 }
         }
-        audio_in.close();
-        audio_in.drain();
+        audioIn.close();
+        audioIn.drain();
         System.out.println("Thread stop");
         } else
             System.out.println("Receive now!");
