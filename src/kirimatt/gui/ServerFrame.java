@@ -95,8 +95,7 @@ public class ServerFrame extends JFrame {
             if (!isTurnedOn) {
                 sendButton.setText("Shut");
                 isTurnedOn = true;
-            }
-            else {
+            } else {
                 sendButton.setText("Talk");
                 isTurnedOn = false;
             }

@@ -10,6 +10,7 @@ public class ReceiveEvent extends EventCallMonitor {
 
     /**
      * Конструктор с аргументом для сеттера
+     *
      * @param isReceive Принимает на вход булеву переменную
      */
     public ReceiveEvent(boolean isReceive) {

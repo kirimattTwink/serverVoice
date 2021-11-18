@@ -32,11 +32,12 @@ public class CallMonitor {
     /**
      * Монитор сеттера
      * Выставляет значения в этом классе
+     *
      * @param event Принимает на вход SetEventCallMonitor для геттеров (Использовать конструктор с параметром)
      */
     public static void parseSetEvent(EventCallMonitor event) {
         if (event instanceof CalledEvent) {
-           isCalled = ((CalledEvent) event).isCalled();
+            isCalled = ((CalledEvent) event).isCalled();
 
         } else if (event instanceof PressedSendEvent) {
             isPressedSend = ((PressedSendEvent) event).isPressedSend();
@@ -57,6 +58,7 @@ public class CallMonitor {
 
     /**
      * Монитор геттера
+     *
      * @param event Принимает на вход EventCallMonitor для геттеров (Использовать конструктор без параметров)
      * @return Возвращает значения для манипулирования потоком
      */

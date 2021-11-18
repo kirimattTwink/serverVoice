@@ -10,6 +10,7 @@ public class TalkingEvent extends EventCallMonitor {
 
     /**
      * Конструктор с аргументом для сеттера
+     *
      * @param isTalking Принимает на вход булеву переменную
      */
     public TalkingEvent(boolean isTalking) {

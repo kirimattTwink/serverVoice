@@ -75,18 +75,6 @@ public class VoiceApplication {
         this.serverSendIP = serverSendIP;
     }
 
-    public void setServerReceivePort(int serverReceivePort) {
-        this.serverReceivePort = serverReceivePort;
-    }
-
-    public void setServerSendIP(String serverSendIP) {
-        this.serverSendIP = serverSendIP;
-    }
-
-    public void setServerSendPort(int serverSendPort) {
-        this.serverSendPort = serverSendPort;
-    }
-
     /**
      * Метод для инициализации константного аудио формата отправки
      *
@@ -129,6 +117,31 @@ public class VoiceApplication {
      */
     public static void addToReceiveBytes(byte b) {
         bytesListReceive.add(b);
+    }
+
+    /**
+     * Метод для записи в WAV файл
+     *
+     * @param data   Байты
+     * @param format Формат аудио
+     * @param fn     Строка пути к новому файлу
+     * @throws Exception Ошибка при записи файла
+     */
+    public static void writeAudioToWavFile(byte[] data, AudioFormat format, String fn) throws Exception {
+        AudioInputStream ais = new AudioInputStream(new ByteArrayInputStream(data), format, data.length);
+        AudioSystem.write(ais, AudioFileFormat.Type.WAVE, new File(fn));
+    }
+
+    public void setServerReceivePort(int serverReceivePort) {
+        this.serverReceivePort = serverReceivePort;
+    }
+
+    public void setServerSendIP(String serverSendIP) {
+        this.serverSendIP = serverSendIP;
+    }
+
+    public void setServerSendPort(int serverSendPort) {
+        this.serverSendPort = serverSendPort;
     }
 
     public void start() {
@@ -185,7 +198,7 @@ public class VoiceApplication {
             int counter = 0;
             for (int i = 0; i < mixedBytes.length; i++) {
 
-                mixedBytes[i] = (byte) ((bytesListReceive.get(i) + bytesListSend.get(i))/2);
+                mixedBytes[i] = (byte) ((bytesListReceive.get(i) + bytesListSend.get(i)) / 2);
 
 //                mixedBytes[i] = (byte) ((bytesListReceive.get(i) & bytesListSend.get(i)));
             }
@@ -296,19 +309,6 @@ public class VoiceApplication {
         } catch (LineUnavailableException | UnknownHostException | SocketException e) {
             System.err.println("Ошибка инициализации аудио" + e);
         }
-    }
-
-    /**
-     * Метод для записи в WAV файл
-     *
-     * @param data   Байты
-     * @param format Формат аудио
-     * @param fn     Строка пути к новому файлу
-     * @throws Exception Ошибка при записи файла
-     */
-    public static void writeAudioToWavFile(byte[] data, AudioFormat format, String fn) throws Exception {
-        AudioInputStream ais = new AudioInputStream(new ByteArrayInputStream(data), format, data.length);
-        AudioSystem.write(ais, AudioFileFormat.Type.WAVE, new File(fn));
     }
 
 }

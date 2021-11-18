@@ -10,6 +10,7 @@ public class DuplexEvent extends EventCallMonitor {
 
     /**
      * Конструктор с аргументом для сеттера
+     *
      * @param isDuplex Принимает на вход булеву переменную
      */
     public DuplexEvent(boolean isDuplex) {

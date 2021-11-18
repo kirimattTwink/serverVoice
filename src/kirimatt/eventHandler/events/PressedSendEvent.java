@@ -10,6 +10,7 @@ public class PressedSendEvent extends EventCallMonitor {
 
     /**
      * Конструктор с аргументом для сеттера
+     *
      * @param isPressedSend Принимает на вход булеву переменную
      */
     public PressedSendEvent(boolean isPressedSend) {

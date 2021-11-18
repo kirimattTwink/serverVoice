@@ -64,11 +64,11 @@ public class RecorderThread extends Thread {
 //                        silentIterate < VoiceApplication.bytesListReceive.size()-VoiceApplication.bytesListSend.size();
 //                        silentIterate++
 //                )
-//                    VoiceApplication.bytesListSend.add((byte)0); //Заполняет недостающую длину тишиной.
+//                    VoiceApplication.addToSendBytes((byte)0); //Заполняет недостающую длину тишиной.
 //            }
             int i = 0;
 
-            byte[] bytesReadable = new byte[LENGTH_BYTES*2-24];
+            byte[] bytesReadable = new byte[LENGTH_BYTES * 2 - 24];
             byte[] ref = new byte[LENGTH_BYTES];
 
             EventCallMonitor isCalled = new CalledEvent();
@@ -112,10 +112,10 @@ public class RecorderThread extends Thread {
                 } catch (IOException e) {
                     System.err.println("Ошибка во время выполнения потока");
                 }
-        }
-        audioIn.close();
-        audioIn.drain();
-        System.out.println("Thread stop");
+            }
+            audioIn.close();
+            audioIn.drain();
+            System.out.println("Thread stop");
         } else
             System.out.println("Receive now!");
     }

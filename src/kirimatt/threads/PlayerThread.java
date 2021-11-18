@@ -43,7 +43,7 @@ public class PlayerThread extends Thread {
 
     @Override
     public void run() {
-        int i = 0;
+
         DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
 
         CallMonitor.parseSetEvent(new ReceiveEvent(false));

@@ -10,6 +10,7 @@ public class CalledEvent extends EventCallMonitor {
 
     /**
      * Конструктор с аргументом для сеттера
+     *
      * @param isCalled Принимает на вход булеву переменную
      */
     public CalledEvent(boolean isCalled) {
